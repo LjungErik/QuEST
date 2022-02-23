@@ -42,14 +42,18 @@ endif()
 if (NOT TESTING)
     message(STATUS "Compiling ${USER_SOURCE} to executable ${OUTPUT_EXE}")
 
+    # ----- ZFP COMPRESSION -------------------------------------------------------
+
+    find_library(ZFP_LIB zfp)
+
     # Create user executable
     add_executable(${OUTPUT_EXE} ${USER_SOURCE})
 
     # Link libraries to user executable, including QuEST library
     if (WIN32)
-        target_link_libraries(${OUTPUT_EXE} QuEST)
+        target_link_libraries(${OUTPUT_EXE} QuEST ${ZFP_LIB})
     else ()
-        target_link_libraries(${OUTPUT_EXE} QuEST m)
+        target_link_libraries(${OUTPUT_EXE} QuEST m ${ZFP_LIB})
     endif()
 endif()
 

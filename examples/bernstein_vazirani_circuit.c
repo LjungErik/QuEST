@@ -34,17 +34,17 @@ int main (int narg, char** varg) {
      */
 
     // NOT the ancilla
-    pauliX(qureg, 0);
+    //pauliX(qureg, 0);
 
     // CNOT secretNum bits with ancilla
-    int bits = secretNum;
+    /* int bits = secretNum;
     int bit;
     for (int qb=1; qb < numQubits; qb++) {
         bit = bits % 2;
         bits /= 2;
         if (bit)
             controlledNot(qureg, 0, qb);
-    }
+    }*/
 
 
     /* 	
@@ -52,7 +52,7 @@ int main (int narg, char** varg) {
      */
 
     // calculate prob of solution state
-    double successProb = 1.0;
+    /*double successProb = 1.0;
     bits = secretNum;
     for (int qb=1; qb < numQubits; qb++) {
         bit = bits % 2;
@@ -62,7 +62,7 @@ int main (int narg, char** varg) {
 
     printf("solution reached with probability ");
     printf("%f", successProb);
-    printf("\n");
+    printf("\n");*/
 
 
     /*

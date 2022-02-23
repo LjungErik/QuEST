@@ -33,6 +33,7 @@
 # define QUEST_H
 
 # include "QuEST_precision.h"
+# include "zfp.h"
 
 // prevent C++ name mangling
 #ifdef __cplusplus
@@ -355,6 +356,9 @@ typedef struct Qureg
     QASMLogger* qasmLog;
 
     Compression comp;
+
+    zfp_stream* zfp;
+    zfp_field* field;
     
 } Qureg;
 

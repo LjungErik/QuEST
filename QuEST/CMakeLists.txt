@@ -313,7 +313,10 @@ endif()
 target_include_directories(QuEST 
     PRIVATE src
     PUBLIC include
+
 )
+
+# target_include_directories()
 
 
 # ----- Definitions -----------------------------------------------------------
@@ -340,6 +343,7 @@ target_link_libraries(QuEST PUBLIC ${MPI_C_LIBRARIES})
 # ----- GPU -------------------------------------------------------------------
 
 target_link_libraries(QuEST ${CUDA_LIBRARIES})
+
 
 
 # ----- Coverage testing with GCC or Clang ------------------------------------
