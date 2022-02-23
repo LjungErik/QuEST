@@ -1291,7 +1291,7 @@ void statevec_setAmps(Qureg qureg, long long int startInd, qreal* reals, qreal* 
 void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
 {
     long long int numAmps = 1LL << numQubits; // 20 2^20 = 1048576
-    long long int numAmpsPerRank = 1024;// numAmps/env.numRanks;
+    long long int numAmpsPerRank = 1024*1024;// numAmps/env.numRanks;
 
     if (numAmpsPerRank > SIZE_MAX) {
         printf("Could not allocate memory (cannot fit numAmps into size_t)!");
@@ -1313,8 +1313,8 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
         zfp_field_set_type(qureg->field, zfp_type_float);
         zfp_field_set_size_1d(qureg->field, numAmpsPerRank); // 1024 block later feature
 
-        //zfp_stream_set_rate(qureg->zfp, 16, zfp_type_float, 1, zfp_false);
-        zfp_stream_set_precision(qureg->zfp, 16);
+        zfp_stream_set_rate(qureg->zfp, 16, zfp_type_float, 1, zfp_false);
+        //zfp_stream_set_precision(qureg->zfp, 16);
 
         zfp_stream_set_execution(qureg->zfp, zfp_exec_serial);
 
