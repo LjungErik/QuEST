@@ -176,6 +176,22 @@ QuESTEnv createQuESTEnv(void) {
     
     env.seeds = NULL;
     env.numSeeds = 0;
+    env.comp = NO_COMPRESSION;
+    seedQuESTDefault(&env);
+    
+    return env;
+}
+
+QuESTEnv createQuESTEnvWithZFP(void) {
+    // init MPI environment
+    
+    QuESTEnv env;
+    env.rank=0;
+    env.numRanks=1;
+    
+    env.seeds = NULL;
+    env.numSeeds = 0;
+    env.comp =  ZFP_COMPRESSION;
     seedQuESTDefault(&env);
     
     return env;

@@ -312,6 +312,10 @@ typedef struct DiagonalOp
     ComplexArray deviceOperator;
 } DiagonalOp;
 
+enum CompressionTechnique {NO_COMPRESSION=0, ZFP_COMPRESSION=1};
+
+typedef enum CompressionTechnique Compression;
+
 /** Represents a system of qubits.
  * Qubits are zero-based
  *
@@ -349,6 +353,8 @@ typedef struct Qureg
 
     //! Storage for generated QASM output
     QASMLogger* qasmLog;
+
+    Compression comp;
     
 } Qureg;
 
@@ -365,6 +371,7 @@ typedef struct QuESTEnv
     int numRanks;
     unsigned long int* seeds;
     int numSeeds;
+    Compression comp;
 } QuESTEnv;
 
 
@@ -1854,6 +1861,20 @@ void tGate(Qureg qureg, int targetQubit);
  * @author Ania Brown
  */
 QuESTEnv createQuESTEnv(void);
+
+/** Create the QuEST execution environment with ZFP compression.
+ * This should be called only once, and the environment should be freed with destroyQuESTEnv at the end
+ * of the user's code.
+ * @see
+ * - reportQuESTEnv()
+ * - destroyQuESTEnv()
+ * - syncQuESTEnv()
+ *
+ * @ingroup type
+ * @return object representing the execution environment. A single instance is used for each program
+ * @author Erik Ljung
+ */
+QuESTEnv createQuESTEnvWithZFP(void);
 
 /** Destroy the QuEST environment. 
  * If something needs to be done to clean up the execution environment, such as 

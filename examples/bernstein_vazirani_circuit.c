@@ -18,15 +18,15 @@ int main (int narg, char** varg) {
      */
 
     // model parameters
-    int numQubits = 9;
+    int numQubits = 20;
     int secretNum = pow(2,4) + 1;
 
     // prepare QuEST
-    QuESTEnv env = createQuESTEnv();
+    QuESTEnv env = createQuESTEnvWithZFP();
 
     // create qureg; let zeroth qubit be ancilla
     Qureg qureg = createQureg(numQubits, env);
-    initZeroState(qureg);
+    //initZeroState(qureg);
 
 
     /* 	

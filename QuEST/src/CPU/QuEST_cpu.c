@@ -1291,13 +1291,19 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
 {
     long long int numAmps = 1LL << numQubits;
     long long int numAmpsPerRank = numAmps/env.numRanks;
-    
+
     if (numAmpsPerRank > SIZE_MAX) {
         printf("Could not allocate memory (cannot fit numAmps into size_t)!");
         exit (EXIT_FAILURE);
     }
 
     size_t arrSize = (size_t) (numAmpsPerRank * sizeof(*(qureg->stateVec.real)));
+
+    if (env.comp == ZFP_COMPRESSION) {
+        // Calculate the needed space for compression
+        arrSize = arrSize;
+    }
+
     qureg->stateVec.real = malloc(arrSize);
     qureg->stateVec.imag = malloc(arrSize);
     if (env.numRanks>1){
@@ -1323,6 +1329,7 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
     qureg->chunkId = env.rank;
     qureg->numChunks = env.numRanks;
     qureg->isDensityMatrix = 0;
+    qureg->comp = env.comp;
 }
 
 void statevec_destroyQureg(Qureg qureg, QuESTEnv env){
@@ -1473,6 +1480,10 @@ void statevec_initBlankState (Qureg qureg)
     qreal *stateVecReal = qureg.stateVec.real;
     qreal *stateVecImag = qureg.stateVec.imag;
 
+    if (qureg.comp == ZFP_COMPRESSION) {
+        // Handle compression / decompression of data
+    }
+
     // initialise the state-vector to all-zeroes
 # ifdef _OPENMP
 # pragma omp parallel \
@@ -1489,15 +1500,34 @@ void statevec_initBlankState (Qureg qureg)
             stateVecImag[index] = 0.0;
         }
     }
+
+    if (qureg.comp == ZFP_COMPRESSION) {
+        // Handle compressing new data
+        // and storing it at the right address
+    }
 }
 
 void statevec_initZeroState (Qureg qureg)
 {
     statevec_initBlankState(qureg);
     if (qureg.chunkId==0){
+
+        qreal *stateVecReal = qureg.stateVec.real;
+        qreal *stateVecImag = qureg.stateVec.imag;
+        // Need to decompress first real
+        if (qureg.comp == ZFP_COMPRESSION) {
+            // Decompress data and temp store in memory
+        }
+
+
         // zero state |0000..0000> has probability 1
-        qureg.stateVec.real[0] = 1.0;
-        qureg.stateVec.imag[0] = 0.0;
+        stateVecReal[0] = 1.0;
+        stateVecImag[0] = 0.0;
+
+        // Need to compress the new type
+        if (qureg.comp == ZFP_COMPRESSION) {
+            // Compress the data and save it to mem again
+        }
     }
 }
 
@@ -2599,14 +2629,22 @@ void statevec_pauliXLocal(Qureg qureg, int targetQubit)
     qreal stateRealUp,stateImagUp;
     long long int thisTask;         
     long long int numTasks=qureg.numAmpsPerChunk>>1;
+    printf("PauliXLocal, numTasks %lli\n", numTasks);
 
     // set dimensions
     sizeHalfBlock = 1LL << targetQubit;  
     sizeBlock     = 2LL * sizeHalfBlock; 
+    printf("PauliXLocal, sizeHalfBlock %lli\n", sizeHalfBlock);
+    printf("PauliXLocal, sizeBlock %lli\n", sizeBlock);
 
     // Can't use qureg.stateVec as a private OMP var
     qreal *stateVecReal = qureg.stateVec.real;
     qreal *stateVecImag = qureg.stateVec.imag;
+
+    if (qureg.comp == ZFP_COMPRESSION) {
+        // Handle decompression of compressed data
+
+    }
 
 # ifdef _OPENMP
 # pragma omp parallel \
@@ -2632,6 +2670,10 @@ void statevec_pauliXLocal(Qureg qureg, int targetQubit)
             stateVecReal[indexLo] = stateRealUp;
             stateVecImag[indexLo] = stateImagUp;
         } 
+    }
+
+    if (qureg.comp == ZFP_COMPRESSION) {
+        // Handle compression of changed state vector
     }
 
 }
@@ -2698,6 +2740,10 @@ void statevec_controlledNotLocal(Qureg qureg, int controlQubit, int targetQubit)
     qreal *stateVecReal = qureg.stateVec.real;
     qreal *stateVecImag = qureg.stateVec.imag;
 
+    if (qureg.comp == ZFP_COMPRESSION) {
+        // Handle decompression of statevector
+    }
+
 # ifdef _OPENMP
 # pragma omp parallel \
     default  (none) \
@@ -2725,6 +2771,10 @@ void statevec_controlledNotLocal(Qureg qureg, int controlQubit, int targetQubit)
                 stateVecImag[indexLo] = stateImagUp;
             }
         } 
+    }
+
+    if (qureg.comp == ZFP_COMPRESSION) {
+        // Handle compression of changed state
     }
 }
 
@@ -3482,6 +3532,10 @@ qreal statevec_findProbabilityOfZeroLocal (Qureg qureg,
     qreal *stateVecReal = qureg.stateVec.real;
     qreal *stateVecImag = qureg.stateVec.imag;
 
+    if (qureg.comp == ZFP_COMPRESSION) {
+        // Handle decompressing statevector
+    }
+
 # ifdef _OPENMP
 # pragma omp parallel \
     shared    (numTasks,sizeBlock,sizeHalfBlock, stateVecReal,stateVecImag) \
@@ -3500,6 +3554,9 @@ qreal statevec_findProbabilityOfZeroLocal (Qureg qureg,
                 + stateVecImag[index]*stateVecImag[index];
         }
     }
+
+    // No state change so no need to compress data again
+
     return totalProbability;
 }
 

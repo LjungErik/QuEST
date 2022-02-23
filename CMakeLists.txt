@@ -16,8 +16,8 @@ project(QuEST_Project)
 # ----- USER OPTIONS ----------------------------------------------------------
 # -----------------------------------------------------------------------------
 
-set(USER_SOURCE  "examples/tutorial_example.c"  CACHE STRING "Source to build with QuEST library")
-set(OUTPUT_EXE   "demo"  CACHE STRING "Executable to compile to")
+set(USER_SOURCE  "examples/bernstein_vazirani_circuit.c"  CACHE STRING "Source to build with QuEST library")
+set(OUTPUT_EXE   "example1"  CACHE STRING "Executable to compile to")
 
 option(TESTING "Enable unit testing. This disables compiling USER_SOURCE" OFF)
 
