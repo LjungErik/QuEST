@@ -33,7 +33,7 @@
 # define QUEST_H
 
 # include "QuEST_precision.h"
-# include "zfp.h"
+# include "zfp-integration.h"
 
 // prevent C++ name mangling
 #ifdef __cplusplus
@@ -316,14 +316,6 @@ typedef struct DiagonalOp
 enum CompressionTechnique {NO_COMPRESSION=0, ZFP_COMPRESSION=1};
 
 typedef enum CompressionTechnique Compression;
-
-typedef struct CompressedMemoryBlock {
-   size_t max_size; // 2072 (4096) // 1000 000 * 24 = 24 MB -> 1GB -> 512 MB -> 512+24MB -> 536MB
-   // 1024*1024 flyttal -> 4*1024*1024B -> 2*1024*1024 -> 256 * 24
-   size_t size; // 2048 rate, 1512 p  -> new_comp_size > size -> allocate more memory -> data = new_data + padding...
-   void *data; // allocated memory of size "size"
-} CompressedMemoryBlock;
-
 /** Represents a system of qubits.
  * Qubits are zero-based
  *
@@ -364,11 +356,16 @@ typedef struct Qureg
 
     Compression comp;
 
-    zfp_stream* zfp;
-    zfp_field* field;
-    
-   //CompressedMemoryBlock *blocks; // [MemoryBlock[1], MemoryBlock[2],...] // 2072
-   //DecompBlock *deblock;
+   // Contains the memory of compressed real values
+   CompressedMemory real_mem;
+   // Contains the memory of compressed imaginary values
+   CompressedMemory imag_mem;
+   
+   // Contains current decompressed active raw real values
+   RawDataBlock real_block;
+   // Contains current decompressed active raw inmaginary valuess
+   RawDataBlock imag_block;
+
 
 } Qureg;
 

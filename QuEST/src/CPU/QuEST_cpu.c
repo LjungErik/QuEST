@@ -1301,56 +1301,50 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
     size_t arrSize = (size_t) (numAmpsPerRank * sizeof(*(qureg->stateVec.real)));
 
     printf("Original size: %li bytes \n", arrSize);
-
-    qureg->stateVec.real = calloc(numAmpsPerRank, sizeof(*(qureg->stateVec.real)));;
-
     if (env.comp == ZFP_COMPRESSION) {
-        // Allocate stream and field size
-        qureg->zfp = zfp_stream_open(NULL);
-        qureg->field = zfp_field_alloc();
+        size_t values_per_block = numAmpsPerRank < MAX_VALUES_PER_BLOCK ? numAmpsPerRank : MAX_VALUES_PER_BLOCK;
 
-        zfp_field_set_pointer(qureg->field, qureg->stateVec.real);
-        zfp_field_set_type(qureg->field, zfp_type_float);
-        zfp_field_set_size_1d(qureg->field, numAmpsPerRank); // 1024 block later feature
+        qureg->real_mem.n_blocks = numAmpsPerRank / MAX_VALUES_PER_BLOCK;
+        qureg->real_mem.values_per_block = values_per_block;
+        qureg->real_mem.dimensions = 1;
+        qureg->real_mem.mode = 'r';
+        qureg->real_mem.rate = 16;
+        qureg->real_mem.exec = zfp_exec_serial;
 
-        zfp_stream_set_rate(qureg->zfp, 16, zfp_type_float, 1, zfp_false);
-        //zfp_stream_set_precision(qureg->zfp, 16);
+        qureg->imag_mem.n_blocks = numAmpsPerRank / MAX_VALUES_PER_BLOCK;
+        qureg->imag_mem.values_per_block = values_per_block;
+        qureg->imag_mem.dimensions = 1;
+        qureg->imag_mem.mode = 'r';
+        qureg->imag_mem.rate = 16;
+        qureg->imag_mem.exec = zfp_exec_serial;
 
-        zfp_stream_set_execution(qureg->zfp, zfp_exec_serial);
+        compressedMemory_allocate(&qureg->real_mem);
+        compressedMemory_allocate(&qureg->imag_mem);
 
-        size_t max_n = zfp_stream_maximum_size(qureg->zfp, qureg->field);
-        void* buffer = malloc(max_n);
-
-        bitstream* stream = stream_open(buffer, max_n);
-
-        zfp_stream_set_bit_stream(qureg->zfp, stream);
-
-        size_t zfpsize = zfp_compress(qureg->zfp, qureg->field);
-
-        printf("Max size: %li, Real size: %li\n", max_n, zfpsize);
-        arrSize = zfpsize;
+        rawDataBlock_init(&qureg->real_block, values_per_block);
+        rawDataBlock_init(&qureg->imag_block, values_per_block);
     }
+
+    qureg->stateVec.real = malloc(arrSize);
+    qureg->stateVec.imag = malloc(arrSize);
 
     printf("Compressed size: %li bytes (rate limited)\n", arrSize);
-
-    
-    qureg->stateVec.imag = calloc(numAmpsPerRank, sizeof(*(qureg->stateVec.real)));
-    if (env.numRanks>1){
+    /*if (env.numRanks>1){
         qureg->pairStateVec.real = malloc(arrSize);
         qureg->pairStateVec.imag = malloc(arrSize);
-    }
+    }*/
 
-    if ( (!(qureg->stateVec.real) || !(qureg->stateVec.imag))
+    /*if ( (!(qureg->stateVec.real) || !(qureg->stateVec.imag))
             && numAmpsPerRank ) {
-        printf("Could not allocate memory!");
+        printf("Could not allocate memory!\n");
         exit (EXIT_FAILURE);
     }
 
     if ( env.numRanks>1 && (!(qureg->pairStateVec.real) || !(qureg->pairStateVec.imag))
             && numAmpsPerRank ) {
-        printf("Could not allocate memory!");
+        printf("Could not allocate memory!\n");
         exit (EXIT_FAILURE);
-    }
+    }*/
 
     qureg->numQubitsInStateVec = numQubits;
     qureg->numAmpsTotal = numAmps;
@@ -1372,14 +1366,17 @@ void statevec_destroyQureg(Qureg qureg, QuESTEnv env){
 
     if (env.comp == ZFP_COMPRESSION) {
         // free space
-        zfp_field_free(qureg.field);
-        zfp_stream_close(qureg.zfp);
+        compressedMemory_destroy(&qureg.real_mem);
+        compressedMemory_destroy(&qureg.imag_mem);
+
+        rawDataBlock_destroy(&qureg.real_block);
+        rawDataBlock_destroy(&qureg.imag_block);
     }
 
-    if (env.numRanks>1){
-        free(qureg.pairStateVec.real);
-        free(qureg.pairStateVec.imag);
-    }
+    // if (env.numRanks>1){
+    //     free(qureg.pairStateVec.real);
+    //     free(qureg.pairStateVec.imag);
+    // }
     qureg.stateVec.real = NULL;
     qureg.stateVec.imag = NULL;
     qureg.pairStateVec.real = NULL;
@@ -2704,6 +2701,10 @@ void statevec_pauliXLocal(Qureg qureg, int targetQubit)
             thisBlock   = thisTask / sizeHalfBlock; // 0, 0, .. 1
             indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock; // 0, 1, .. 15, .. 32
             indexLo     = indexUp + sizeHalfBlock; // 16, 17, 31, .. 48
+
+            // if indexUp and indexLo not in current block
+                // save(current_block)
+                // load(current_block, block_index)
 
             stateRealUp = stateVecReal[indexUp];
             stateImagUp = stateVecImag[indexUp];
