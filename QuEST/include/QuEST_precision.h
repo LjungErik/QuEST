@@ -29,6 +29,7 @@
 # if QuEST_PREC==1
     # define qreal float
     # define zfp_type_qreal zfp_type_float
+    # define zfp_lossy_rate 32
     // \cond HIDDEN_SYMBOLS   
     # define MPI_QuEST_REAL MPI_FLOAT
     # define MPI_MAX_AMPS_IN_MSG (1LL<<29) // must be 2^int
@@ -44,6 +45,7 @@
 # elif QuEST_PREC==2
     # define qreal double
     # define zfp_type_qreal zfp_type_double
+    # define zfp_lossy_rate 32 
     // \cond HIDDEN_SYMBOLS   
     # define MPI_QuEST_REAL MPI_DOUBLE
     # define MPI_MAX_AMPS_IN_MSG (1LL<<28) // must be 2^int
