@@ -1,12 +1,10 @@
 #ifndef ZFP_INTEGRATION_H
 #define ZFP_INTEGRATION_H
 
+#include <stdbool.h>
+
 #include "QuEST_precision.h"
 #include "zfp.h"
-
-#define bool char
-#define true 1
-#define false 0
 
 // Maximum size of a compressed block
 #define MAX_VALUES_PER_BLOCK 1024 // floating point numbers per block
@@ -37,11 +35,15 @@ typedef struct RawDataBlock {
 } RawDataBlock;
 
 void compressedMemory_allocate(CompressedMemory *mem);
-void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block); // Compressing
-void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block); // Decompressing
 void compressedMemory_destroy(CompressedMemory *mem);
+bool compressedMemory_save(CompressedMemory *mem, RawDataBlock* block); // Compressing
+bool compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block); // Decompressing
+
+qreal compressedMemory_get_value(CompressedMemory *mem, RawDataBlock *block, long long int index);
+void compressedMemory_set_value(CompressedMemory *mem, RawDataBlock *block, long long int index, qreal value);
 
 void rawDataBlock_init(RawDataBlock* block, size_t n_values);
 void rawDataBlock_destroy(RawDataBlock* block);
+bool rawDataBlock_is_current_block(RawDataBlock* block, long long int block_idx);
 
 #endif

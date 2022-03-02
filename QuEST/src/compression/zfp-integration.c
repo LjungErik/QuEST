@@ -1,7 +1,43 @@
 #include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
 
 #include "zfp-integration.h"
 #include "bitstream.h"
+
+bool rawDataBlock_is_current_block(RawDataBlock* block, long long int block_idx) {
+    return block->used && 
+           block->mem_block_index == block_idx;
+}
+
+qreal rawDataBlock_get_value(RawDataBlock* block, long long int index) {
+    if (!block->used) {
+        printf("Error, cannot fetch data, block not used. Trying internal index: %lli\n", index);
+        return 0.0;
+    }
+
+    if (block->n_values <= index) {
+        printf("Error, cannot fetch index, index out of range");
+        return 0.0;
+    }
+
+    return block->data[index];
+}
+
+bool rawDataBlock_set_value(RawDataBlock* block, long long int index, qreal value) {
+    if (!block->used) {
+        printf("Error, cannot set data, block not used. Trying interal index: %lli\n", index);
+        return false;
+    }
+
+    if (block->n_values <= index) {
+        printf("Error, cannot fetch index, index out of range");
+        return false;
+    }
+
+    block->data[index] = value;
+    return true;
+}
 
 void compressedMemory_allocate(CompressedMemory *mem) {
     zfp_stream* zfp = zfp_stream_open(NULL);
@@ -21,6 +57,9 @@ void compressedMemory_allocate(CompressedMemory *mem) {
 
     /* Allocate the number of blocks */
     /* For each block allocate the memory for max_n */
+    printf("Allocating %li blocks for memory with block size %li, total size: %lli\n", 
+                mem->n_blocks, max_n, (long long int) (mem->n_blocks * max_n));
+
     mem->blocks = calloc(mem->n_blocks, sizeof(CompressedBlock));
     for (int i = 0; i < mem->n_blocks; i++) {
         mem->blocks[i].n_values = mem->values_per_block;
@@ -40,7 +79,12 @@ void compressedMemory_destroy(CompressedMemory *mem) {
     free(mem->blocks);
 }
 
-void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
+bool compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
+    if (!block->used) {
+        printf("Error, cannot save uncompressed data, block contains no data.\n");
+        return false;
+    }
+
     bitstream* stream;
     zfp_stream* zfp;
     zfp_field* field;
@@ -67,14 +111,22 @@ void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
     size_t zfpsize = zfp_compress(zfp, field);
     mem->blocks[index].size = zfpsize;
     block->used = false;
+    block->n_values = 0;
 
     zfp_field_free(field);  
     zfp_stream_close(zfp);
     stream_close(stream);
+
+    return true;
 }
 
 
-void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block) {
+bool compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block) {
+    if (block->used) {
+        printf("Error, cannot load compressed data, block still in use. Existing block index: %li\n", block->mem_block_index);
+        return false;
+    }
+    
     bitstream* stream;
     zfp_stream* zfp;
     zfp_field* field;
@@ -102,17 +154,76 @@ void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
     zfp_decompress(zfp, field);
 
     block->mem_block_index = index;
+    block->n_values = mem->blocks[index].n_values;
     block->used = true;
 
     zfp_field_free(field);  
     zfp_stream_close(zfp);
     stream_close(stream);
+
+    return true;
+}
+
+qreal compressedMemory_get_value(CompressedMemory* mem, RawDataBlock* block, long long int index) {
+    // Calculate which block index should be in (index -> block index)
+    long long int block_idx = (index / mem->values_per_block);
+
+    if (block_idx >= mem->n_blocks) {
+        printf("Invalid block index, block index out of range, block index: %lli\n", block_idx);
+        return 0.0;
+    }
+
+    // Calculate local index inside block (index -> internal block index, range. 0-1023) 
+    long long int internal_idx = index - (block_idx * mem->values_per_block);
+    
+    // Check if RawDataBlock is the correct block index
+    if (!rawDataBlock_is_current_block(block, block_idx)) {
+        if (block->used) {
+            // Compress the existing block and save to memory
+            compressedMemory_save(mem, block);
+        }
+        // Decompress the specific block
+        compressedMemory_load(mem, block_idx, block);
+    }  
+        
+    // Get specific data for interal index in the uncompressed raw data block
+    return rawDataBlock_get_value(block, internal_idx);
+}
+
+void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long long int index, qreal value) {
+    // Calculate which block index should be in (index -> block index)
+    long long int block_idx = (index / mem->values_per_block);
+
+    if (block_idx >= mem->n_blocks) {
+        printf("Invalid block index, block index out of range, block index: %lli\n", block_idx);
+        return;
+    }
+
+    // Calculate local index inside block (index -> internal block index, range. 0-1023) 
+    long long int internal_idx = index - (block_idx * mem->values_per_block);
+    
+    // Check if RawDataBlock is the correct block index
+    if (!rawDataBlock_is_current_block(block, block_idx)) {
+        if (block->used) {
+            // Compress the existing block and save to memory
+            compressedMemory_save(mem, block);
+        }
+        // Decompress the specific block
+        compressedMemory_load(mem, block_idx, block);
+    }  
+        
+    // Get specific data for interal index in the uncompressed raw data block
+    rawDataBlock_set_value(block, internal_idx, value);
 }
 
 void rawDataBlock_init(RawDataBlock* block, size_t n_values) {
     size_t data_size = (size_t) (n_values * sizeof(*(block->data)));
+
+    printf("Allocating Raw Data block with data size: %li\n", data_size);
+
     block->data = malloc(data_size);
     block->size = data_size;
+    block->n_values = 0;
     block->used = false;
 }
 

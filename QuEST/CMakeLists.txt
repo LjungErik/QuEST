@@ -26,7 +26,7 @@ option(MULTITHREADED "Switches on OpenMP Threading if an OpenMP implementation c
 
 option(DISTRIBUTED "Whether the program will be run in distributed mode using MPI. Set to 1 to enable" 0)
 
-set(PRECISION 2 CACHE STRING
+set(PRECISION 1 CACHE STRING
     "Whether to use single, double or quad floating point precision in the state vector. {1,2,4}")
 
 option(GPUACCELERATED "Whether to program will run on GPU. Set to 1 to enable" 0)

@@ -16,6 +16,7 @@
 # include "mt19937ar.h"
 
 # include "QuEST_cpu_internal.h"
+# include "QuEST_extended.h"
 # include "zfp.h"
 
 # include <math.h>  
@@ -1291,7 +1292,7 @@ void statevec_setAmps(Qureg qureg, long long int startInd, qreal* reals, qreal* 
 void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
 {
     long long int numAmps = 1LL << numQubits; // 20 2^20 = 1048576
-    long long int numAmpsPerRank = 1024*1024;// numAmps/env.numRanks;
+    long long int numAmpsPerRank = numAmps; ///env.numRanks;
 
     if (numAmpsPerRank > SIZE_MAX) {
         printf("Could not allocate memory (cannot fit numAmps into size_t)!");
@@ -1304,14 +1305,14 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
     if (env.comp == ZFP_COMPRESSION) {
         size_t values_per_block = numAmpsPerRank < MAX_VALUES_PER_BLOCK ? numAmpsPerRank : MAX_VALUES_PER_BLOCK;
 
-        qureg->real_mem.n_blocks = numAmpsPerRank / MAX_VALUES_PER_BLOCK;
+        qureg->real_mem.n_blocks = numAmpsPerRank / values_per_block;
         qureg->real_mem.values_per_block = values_per_block;
         qureg->real_mem.dimensions = 1;
         qureg->real_mem.mode = 'r';
         qureg->real_mem.rate = 16;
         qureg->real_mem.exec = zfp_exec_serial;
 
-        qureg->imag_mem.n_blocks = numAmpsPerRank / MAX_VALUES_PER_BLOCK;
+        qureg->imag_mem.n_blocks = numAmpsPerRank / values_per_block;
         qureg->imag_mem.values_per_block = values_per_block;
         qureg->imag_mem.dimensions = 1;
         qureg->imag_mem.mode = 'r';
@@ -1328,7 +1329,7 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
     qureg->stateVec.real = malloc(arrSize);
     qureg->stateVec.imag = malloc(arrSize);
 
-    printf("Compressed size: %li bytes (rate limited)\n", arrSize);
+    //printf("Compressed size: %li bytes (rate limited)\n", arrSize);
     /*if (env.numRanks>1){
         qureg->pairStateVec.real = malloc(arrSize);
         qureg->pairStateVec.imag = malloc(arrSize);
@@ -1509,34 +1510,10 @@ void statevec_initBlankState (Qureg qureg)
     // dimension of the state vector
     stateVecSize = qureg.numAmpsPerChunk;
 
-    // Can't use qureg->stateVec as a private OMP var
-    qreal *stateVecReal = qureg.stateVec.real;
-    qreal *stateVecImag = qureg.stateVec.imag;
-
-    if (qureg.comp == ZFP_COMPRESSION) {
-        // Handle compression / decompression of data
-    }
-
     // initialise the state-vector to all-zeroes
-# ifdef _OPENMP
-# pragma omp parallel \
-    default  (none) \
-    shared   (stateVecSize, stateVecReal, stateVecImag) \
-    private  (index) 
-# endif
-    {
-# ifdef _OPENMP
-# pragma omp for schedule (static)
-# endif
-        for (index=0; index<stateVecSize; index++) {
-            stateVecReal[index] = 0.0;
-            stateVecImag[index] = 0.0;
-        }
-    }
-
-    if (qureg.comp == ZFP_COMPRESSION) {
-        // Handle compressing new data
-        // and storing it at the right address
+    for (index=0; index<stateVecSize; index++) {
+        setQuregRealValue(&qureg, index, 0.0);
+        setQuregImagValue(&qureg, index, 0.0);
     }
 }
 
@@ -1544,23 +1521,9 @@ void statevec_initZeroState (Qureg qureg)
 {
     statevec_initBlankState(qureg);
     if (qureg.chunkId==0){
-
-        qreal *stateVecReal = qureg.stateVec.real;
-        qreal *stateVecImag = qureg.stateVec.imag;
-        // Need to decompress first real
-        if (qureg.comp == ZFP_COMPRESSION) {
-            // Decompress data and temp store in memory
-        }
-
-
         // zero state |0000..0000> has probability 1
-        stateVecReal[0] = 1.0;
-        stateVecImag[0] = 0.0;
-
-        // Need to compress the new type
-        if (qureg.comp == ZFP_COMPRESSION) {
-            // Compress the data and save it to mem again
-        }
+        setQuregRealValue(&qureg, 0, 1.0);
+        setQuregImagValue(&qureg, 0, 0.0);
     }
 }
 

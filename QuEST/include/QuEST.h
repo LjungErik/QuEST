@@ -365,16 +365,7 @@ typedef struct Qureg
    RawDataBlock real_block;
    // Contains current decompressed active raw inmaginary valuess
    RawDataBlock imag_block;
-
-
 } Qureg;
-
-/* Buffer for active decompressed block */
-typedef struct DecompBlock {
-   int memoryblockIndex; // qureg->blocks[memoryblockIndex].data = compress(data) 
-   size_t size; // 2048 rate, 1512 p
-   void *data; // allocated memory of size "size"
-} DecompBlock;
 
 /** Information about the environment the program is running in.
  * In practice, this holds info about MPI ranks and helps to hide MPI initialization code
