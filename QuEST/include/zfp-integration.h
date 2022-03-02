@@ -34,7 +34,16 @@ typedef struct RawDataBlock {
     qreal* data;
 } RawDataBlock;
 
-void compressedMemory_allocate(CompressedMemory *mem);
+typedef struct CompressionConfig {
+    size_t n_blocks;
+    size_t values_per_block;
+    unsigned int dimensions;
+    char mode;
+    double rate;
+    zfp_exec_policy exec;
+} CompressionConfig;
+
+CompressedMemory* compressedMemory_allocate(CompressionConfig *config);
 void compressedMemory_destroy(CompressedMemory *mem);
 bool compressedMemory_save(CompressedMemory *mem, RawDataBlock* block); // Compressing
 bool compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block); // Decompressing
@@ -42,7 +51,7 @@ bool compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
 qreal compressedMemory_get_value(CompressedMemory *mem, RawDataBlock *block, long long int index);
 void compressedMemory_set_value(CompressedMemory *mem, RawDataBlock *block, long long int index, qreal value);
 
-void rawDataBlock_init(RawDataBlock* block, size_t n_values);
+RawDataBlock* rawDataBlock_allocate(size_t n_values);
 void rawDataBlock_destroy(RawDataBlock* block);
 bool rawDataBlock_is_current_block(RawDataBlock* block, long long int block_idx);
 

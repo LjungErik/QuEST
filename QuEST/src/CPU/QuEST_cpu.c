@@ -1299,53 +1299,31 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
         exit (EXIT_FAILURE);
     }
 
-    size_t arrSize = (size_t) (numAmpsPerRank * sizeof(*(qureg->stateVec.real)));
+    size_t arrSize = (size_t) (numAmpsPerRank * sizeof(qreal));
 
-    printf("Original size: %li bytes \n", arrSize);
+    printf("Original size: %li bytes \n", arrSize*2);
     if (env.comp == ZFP_COMPRESSION) {
         size_t values_per_block = numAmpsPerRank < MAX_VALUES_PER_BLOCK ? numAmpsPerRank : MAX_VALUES_PER_BLOCK;
 
-        qureg->real_mem.n_blocks = numAmpsPerRank / values_per_block;
-        qureg->real_mem.values_per_block = values_per_block;
-        qureg->real_mem.dimensions = 1;
-        qureg->real_mem.mode = 'r';
-        qureg->real_mem.rate = zfp_lossy_rate;
-        qureg->real_mem.exec = zfp_exec_serial;
+        CompressionConfig conf;
 
-        qureg->imag_mem.n_blocks = numAmpsPerRank / values_per_block;
-        qureg->imag_mem.values_per_block = values_per_block;
-        qureg->imag_mem.dimensions = 1;
-        qureg->imag_mem.mode = 'r';
-        qureg->imag_mem.rate = zfp_lossy_rate;
-        qureg->imag_mem.exec = zfp_exec_serial;
+        conf.n_blocks = numAmpsPerRank / values_per_block;
+        conf.values_per_block = values_per_block;
+        conf.dimensions = 1;
+        conf.mode = 'r';
+        conf.rate = zfp_lossy_rate;
+        conf.exec = zfp_exec_serial;
 
-        compressedMemory_allocate(&qureg->real_mem);
-        compressedMemory_allocate(&qureg->imag_mem);
+        qureg->real_mem = compressedMemory_allocate(&conf);
+        qureg->imag_mem = compressedMemory_allocate(&conf);
 
-        rawDataBlock_init(&qureg->real_block, values_per_block);
-        rawDataBlock_init(&qureg->imag_block, values_per_block);
+        qureg->real_block = rawDataBlock_allocate(values_per_block);
+        qureg->imag_block = rawDataBlock_allocate(values_per_block);
     }
-
-    qureg->stateVec.real = malloc(arrSize);
-    qureg->stateVec.imag = malloc(arrSize);
-
-    //printf("Compressed size: %li bytes (rate limited)\n", arrSize);
-    /*if (env.numRanks>1){
-        qureg->pairStateVec.real = malloc(arrSize);
-        qureg->pairStateVec.imag = malloc(arrSize);
-    }*/
-
-    /*if ( (!(qureg->stateVec.real) || !(qureg->stateVec.imag))
-            && numAmpsPerRank ) {
-        printf("Could not allocate memory!\n");
-        exit (EXIT_FAILURE);
+    else {
+        qureg->stateVec.real = malloc(arrSize);
+        qureg->stateVec.imag = malloc(arrSize);
     }
-
-    if ( env.numRanks>1 && (!(qureg->pairStateVec.real) || !(qureg->pairStateVec.imag))
-            && numAmpsPerRank ) {
-        printf("Could not allocate memory!\n");
-        exit (EXIT_FAILURE);
-    }*/
 
     qureg->numQubitsInStateVec = numQubits;
     qureg->numAmpsTotal = numAmps;
@@ -1362,26 +1340,27 @@ void statevec_destroyQureg(Qureg qureg, QuESTEnv env){
     qureg.numAmpsTotal = 0;
     qureg.numAmpsPerChunk = 0;
 
-    free(qureg.stateVec.real);
-    free(qureg.stateVec.imag);
-
     if (env.comp == ZFP_COMPRESSION) {
         // free space
-        compressedMemory_destroy(&qureg.real_mem);
-        compressedMemory_destroy(&qureg.imag_mem);
+        compressedMemory_destroy(qureg.real_mem);
+        compressedMemory_destroy(qureg.imag_mem);
 
-        rawDataBlock_destroy(&qureg.real_block);
-        rawDataBlock_destroy(&qureg.imag_block);
+        rawDataBlock_destroy(qureg.real_block);
+        rawDataBlock_destroy(qureg.imag_block);
+    }
+    else {
+        free(qureg.stateVec.real);
+        free(qureg.stateVec.imag);
     }
 
-    // if (env.numRanks>1){
-    //     free(qureg.pairStateVec.real);
-    //     free(qureg.pairStateVec.imag);
-    // }
     qureg.stateVec.real = NULL;
     qureg.stateVec.imag = NULL;
     qureg.pairStateVec.real = NULL;
     qureg.pairStateVec.imag = NULL;
+    qureg.real_mem = NULL;
+    qureg.imag_mem = NULL;
+    qureg.real_block = NULL;
+    qureg.imag_block = NULL;
 }
 
 DiagonalOp agnostic_createDiagonalOp(int numQubits, QuESTEnv env) {
@@ -1492,8 +1471,7 @@ void statevec_reportStateToScreen(Qureg qureg, QuESTEnv env, int reportRank){
                 }
 
                 for(index=0; index<qureg.numAmpsPerChunk; index++){
-                    //printf(REAL_STRING_FORMAT ", " REAL_STRING_FORMAT "\n", qureg.pairStateVec.real[index], qureg.pairStateVec.imag[index]);
-                    printf(REAL_STRING_FORMAT ", " REAL_STRING_FORMAT "\n", qureg.stateVec.real[index], qureg.stateVec.imag[index]);
+                    printf(REAL_STRING_FORMAT ", " REAL_STRING_FORMAT "\n", getQuregRealValue(&qureg, index), getQuregImagValue(&qureg, index));
                 }
                 if (reportRank || rank==qureg.numChunks-1) printf("]\n");
             }
@@ -2635,9 +2613,9 @@ void statevec_pauliXLocal(Qureg qureg, int targetQubit)
 
     // Handle compress and decompress on regular intervals
     for (thisTask=0; thisTask<numTasks; thisTask++) {
-        thisBlock   = thisTask / sizeHalfBlock; // 0, 0, .. 1
-        indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock; // 0, 1, .. 15, .. 32
-        indexLo     = indexUp + sizeHalfBlock; // 16, 17, 31, .. 48
+        thisBlock   = thisTask / sizeHalfBlock;
+        indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
+        indexLo     = indexUp + sizeHalfBlock;
 
         stateRealUp = getQuregRealValue(&qureg, indexUp);
         stateImagUp = getQuregImagValue(&qureg, indexUp);
@@ -2648,8 +2626,8 @@ void statevec_pauliXLocal(Qureg qureg, int targetQubit)
         setQuregRealValue(&qureg, indexUp, stateRealLo);
         setQuregImagValue(&qureg, indexUp, stateImagLo);
 
-        setQuregRealValue(&qureg, indexUp, stateRealUp);
-        setQuregImagValue(&qureg, indexUp, stateImagUp);
+        setQuregRealValue(&qureg, indexLo, stateRealUp);
+        setQuregImagValue(&qureg, indexLo, stateImagUp);
     }
 
 }
@@ -2729,8 +2707,8 @@ void statevec_controlledNotLocal(Qureg qureg, int controlQubit, int targetQubit)
             setQuregRealValue(&qureg, indexUp, stateRealLo);
             setQuregImagValue(&qureg, indexUp, stateImagLo);
 
-            setQuregRealValue(&qureg, indexUp, stateRealUp);
-            setQuregImagValue(&qureg, indexUp, stateImagUp);
+            setQuregRealValue(&qureg, indexLo, stateRealUp);
+            setQuregImagValue(&qureg, indexLo, stateImagUp);
         }
     }
 }

@@ -357,14 +357,14 @@ typedef struct Qureg
     Compression comp;
 
    // Contains the memory of compressed real values
-   CompressedMemory real_mem;
+   CompressedMemory* real_mem;
    // Contains the memory of compressed imaginary values
-   CompressedMemory imag_mem;
+   CompressedMemory* imag_mem;
    
    // Contains current decompressed active raw real values
-   RawDataBlock real_block;
+   RawDataBlock* real_block;
    // Contains current decompressed active raw inmaginary valuess
-   RawDataBlock imag_block;
+   RawDataBlock* imag_block;
 } Qureg;
 
 /** Information about the environment the program is running in.

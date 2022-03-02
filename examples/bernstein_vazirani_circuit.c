@@ -18,12 +18,12 @@ int main (int narg, char** varg) {
      */
 
     // model parameters
-    int numQubits = 10;
+    int numQubits = 30;
     int secretNum = pow(2,4) + 1;
 
     // prepare QuEST
-    //QuESTEnv env = createQuESTEnvWithZFP();
-    QuESTEnv env = createQuESTEnv();
+    QuESTEnv env = createQuESTEnvWithZFP();
+    //QuESTEnv env = createQuESTEnv();
 
     // create qureg; let zeroth qubit be ancilla
     Qureg qureg = createQureg(numQubits, env);
@@ -64,6 +64,8 @@ int main (int narg, char** varg) {
     printf("solution reached with probability ");
     printf("%f", successProb);
     printf("\n");
+
+    //reportStateToScreen(qureg, env, 0);
 
 
     /*

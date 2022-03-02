@@ -39,9 +39,17 @@ bool rawDataBlock_set_value(RawDataBlock* block, long long int index, qreal valu
     return true;
 }
 
-void compressedMemory_allocate(CompressedMemory *mem) {
+CompressedMemory* compressedMemory_allocate(CompressionConfig *conf) {
+    CompressedMemory *mem = calloc(1, sizeof(CompressedMemory));
     zfp_stream* zfp = zfp_stream_open(NULL);
     zfp_field* field = zfp_field_alloc();
+
+    mem->n_blocks = conf->n_blocks;
+    mem->values_per_block = conf->values_per_block;
+    mem->dimensions = conf->dimensions;
+    mem->mode = conf->mode;
+    mem->rate = conf->rate;
+    mem->exec = conf->exec;
 
     zfp_field_set_type(field, zfp_type_qreal);
     zfp_field_set_size_1d(field, mem->values_per_block); // 1024 block later feature
@@ -65,11 +73,13 @@ void compressedMemory_allocate(CompressedMemory *mem) {
         mem->blocks[i].n_values = mem->values_per_block;
         mem->blocks[i].max_size = max_n;
         mem->blocks[i].size = 0; 
-        mem->blocks[i].data = malloc(max_n);
+        mem->blocks[i].data = calloc(max_n, sizeof(char));
     }
 
-    zfp_field_free(field);  
+    zfp_field_free(field);
     zfp_stream_close(zfp);
+
+    return mem;
 }
 
 void compressedMemory_destroy(CompressedMemory *mem) {
@@ -77,6 +87,7 @@ void compressedMemory_destroy(CompressedMemory *mem) {
         free(mem->blocks[i].data);
     }
     free(mem->blocks);
+    free(mem);
 }
 
 bool compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
@@ -157,6 +168,8 @@ bool compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
     block->n_values = mem->blocks[index].n_values;
     block->used = true;
 
+    //printf("## Loaded compressed data into memory, index: %li\n", index);
+
     zfp_field_free(field);  
     zfp_stream_close(zfp);
     stream_close(stream);
@@ -179,6 +192,7 @@ qreal compressedMemory_get_value(CompressedMemory* mem, RawDataBlock* block, lon
     // Check if RawDataBlock is the correct block index
     if (!rawDataBlock_is_current_block(block, block_idx)) {
         if (block->used) {
+            //printf("Saving block: %li\n", block->mem_block_index);
             // Compress the existing block and save to memory
             compressedMemory_save(mem, block);
         }
@@ -202,9 +216,12 @@ void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long
     // Calculate local index inside block (index -> internal block index, range. 0-1023) 
     long long int internal_idx = index - (block_idx * mem->values_per_block);
     
+    //printf("Setting block: %lli, internal index: %lli, value: %f\n", block_idx, internal_idx, value);
+
     // Check if RawDataBlock is the correct block index
     if (!rawDataBlock_is_current_block(block, block_idx)) {
         if (block->used) {
+            //printf("Saving block: %li\n", block->mem_block_index);
             // Compress the existing block and save to memory
             compressedMemory_save(mem, block);
         }
@@ -216,7 +233,8 @@ void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long
     rawDataBlock_set_value(block, internal_idx, value);
 }
 
-void rawDataBlock_init(RawDataBlock* block, size_t n_values) {
+RawDataBlock* rawDataBlock_allocate(size_t n_values) {
+    RawDataBlock* block = calloc(1, sizeof(RawDataBlock));
     size_t data_size = (size_t) (n_values * sizeof(*(block->data)));
 
     printf("Allocating Raw Data block with data size: %li\n", data_size);
@@ -224,9 +242,13 @@ void rawDataBlock_init(RawDataBlock* block, size_t n_values) {
     block->data = malloc(data_size);
     block->size = data_size;
     block->n_values = 0;
+    block->mem_block_index = 0;
     block->used = false;
+
+    return block;
 }
 
 void rawDataBlock_destroy(RawDataBlock* block) {
     free(block->data);
+    free(block);
 }
