@@ -9,6 +9,24 @@
 // Maximum size of a compressed block
 #define MAX_VALUES_PER_BLOCK 1024 // floating point numbers per block
 
+enum CompressionTechnique {
+    NO_COMPRESSION=0,
+    ZFP_COMPRESSION=1
+};
+
+typedef enum CompressionTechnique Compression;
+
+typedef struct CompressionImp_vtable_ {
+    const long long int (*size)(void*, RawDataBlock*);
+    const void (*compress)(void*, CompressedBlock*, RawDataBlock*);
+    const void (*decompress)(void*, CompressedBlock*, RawDataBlock*);
+} CompressionImp_vtable_;
+
+typedef struct CompressionImp {
+    CompressionImp_vtable_ *vtable_;
+    void *config;
+} CompressionImp;
+
 typedef struct CompressedBlock {
     size_t n_values;  // Number of floating point values
     size_t max_size;  // Maximum byte size
@@ -19,10 +37,7 @@ typedef struct CompressedBlock {
 typedef struct CompressedMemory {
     size_t n_blocks;
     size_t values_per_block;        // The number of values per each block e.g. x / values_per_block => block index
-    unsigned int dimensions;
-    char mode;
-    double rate;
-    zfp_exec_policy exec;
+    CompressionImp imp;
     CompressedBlock* blocks;        // The compressed blocks of data
 } CompressedMemory;
 
@@ -33,15 +48,6 @@ typedef struct RawDataBlock {
     bool used;
     qreal* data;
 } RawDataBlock;
-
-typedef struct CompressionConfig {
-    size_t n_blocks;
-    size_t values_per_block;
-    unsigned int dimensions;
-    char mode;
-    double rate;
-    zfp_exec_policy exec;
-} CompressionConfig;
 
 CompressedMemory* compressedMemory_allocate(CompressionConfig *config);
 void compressedMemory_destroy(CompressedMemory *mem);
