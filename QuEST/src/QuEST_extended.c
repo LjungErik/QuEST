@@ -1,5 +1,5 @@
 #include "QuEST_extended.h"
-#include "zfp-integration.h"
+#include "compression.h"
 
 qreal getQuregRealValue(Qureg *qureg, long long int index) {
     if (qureg->comp == ZFP_COMPRESSION) {

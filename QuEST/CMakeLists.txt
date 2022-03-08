@@ -175,6 +175,10 @@ endif()
 # set C flags that are common between compilers and build types
 set (CMAKE_C_STANDARD 99)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} \
+        -lprofiler -ltcmalloc"
+    )
+
 # Use -O2 for all but debug mode by default 
 if (NOT("${CMAKE_BUILD_TYPE}" STREQUAL "Debug"))
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} \
@@ -225,6 +229,10 @@ endif()
 
 # set C++ flags that are common between compilers and build types
 set (CMAKE_CXX_STANDARD 98)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} \
+        -lprofiler -ltcmalloc"
+    )
 
 # Use -O2 for all but debug mode by default 
 if (NOT("${CMAKE_BUILD_TYPE}" STREQUAL "Debug"))

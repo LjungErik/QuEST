@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "zfp-integration.h"
+#include "compression.h"
 #include "bitstream.h"
 
 bool rawDataBlock_is_current_block(RawDataBlock* block, long long int block_idx) {

@@ -1,5 +1,5 @@
-#ifndef ZFP_INTEGRATION_H
-#define ZFP_INTEGRATION_H
+#ifndef COMPRESSION_H
+#define COMPRESSION_H
 
 #include <stdbool.h>
 

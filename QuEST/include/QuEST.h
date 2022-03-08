@@ -33,7 +33,7 @@
 # define QUEST_H
 
 # include "QuEST_precision.h"
-# include "zfp-integration.h"
+# include "compression.h"
 
 // prevent C++ name mangling
 #ifdef __cplusplus

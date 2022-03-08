@@ -45,7 +45,7 @@ if (NOT TESTING)
     # ----- ZFP COMPRESSION -------------------------------------------------------
 
     find_library(ZFP_LIB zfp)
-
+    
     # Create user executable
     add_executable(${OUTPUT_EXE} ${USER_SOURCE})
 

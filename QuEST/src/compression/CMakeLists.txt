@@ -1,5 +1,5 @@
 set(QuEST_SRC_COMPRESSION
-    ${CMAKE_CURRENT_SOURCE_DIR}/zfp-integration.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/compression.c
     PARENT_SCOPE
 ) 
 
