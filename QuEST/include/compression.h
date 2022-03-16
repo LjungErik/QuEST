@@ -17,7 +17,7 @@ enum CompressionTechnique {
 typedef enum CompressionTechnique Compression;
 
 typedef struct CompressionImp_vtable_ {
-    const long long int (*size)(void*, RawDataBlock*);
+    const size_t (*max_size)(void*, RawDataBlock*);
     const void (*compress)(void*, CompressedBlock*, RawDataBlock*);
     const void (*decompress)(void*, CompressedBlock*, RawDataBlock*);
 } CompressionImp_vtable_;
