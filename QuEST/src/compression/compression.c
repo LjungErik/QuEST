@@ -3,7 +3,6 @@
 #include <stdbool.h>
 
 #include "compression.h"
-#include "bitstream.h"
 
 bool rawDataBlock_is_current_block(RawDataBlock* block, long long int block_idx) {
     return block->used && 
@@ -39,29 +38,24 @@ bool rawDataBlock_set_value(RawDataBlock* block, long long int index, qreal valu
     return true;
 }
 
-CompressedMemory* compressedMemory_allocate(CompressionConfig *conf) {
+size_t compression_maxSize(CompressionImp *imp) {
+    return imp->max_size(imp->config);
+}
+
+void compression_compress(CompressionImp *imp,  CompressedBlock *out_block, RawDataBlock *in_block) {
+    imp->compress(imp->config, out_block, in_block);
+}
+
+void compression_decompress(CompressionImp *imp, CompressedBlock *in_block, RawDataBlock *out_block) {
+    imp->decompress(imp->config, in_block, out_block);
+}
+
+CompressedMemory* compressedMemory_allocate(CompressionImp imp) {
     CompressedMemory *mem = calloc(1, sizeof(CompressedMemory));
-    zfp_stream* zfp = zfp_stream_open(NULL);
-    zfp_field* field = zfp_field_alloc();
 
-    mem->n_blocks = conf->n_blocks;
-    mem->values_per_block = conf->values_per_block;
-    mem->dimensions = conf->dimensions;
-    mem->mode = conf->mode;
-    mem->rate = conf->rate;
-    mem->exec = conf->exec;
+    mem->imp = imp;
 
-    zfp_field_set_type(field, zfp_type_qreal);
-    zfp_field_set_size_1d(field, mem->values_per_block); // 1024 block later feature
-
-    switch (mem->mode) {
-        case 'r':
-            zfp_stream_set_rate(zfp, mem->rate, zfp_type_qreal, mem->dimensions, zfp_false);
-    }
-
-    zfp_stream_set_execution(zfp, mem->exec);
-
-    size_t max_n = zfp_stream_maximum_size(zfp, field);
+    size_t max_n = compression_maxSize(&mem->imp);
 
     /* Allocate the number of blocks */
     /* For each block allocate the memory for max_n */
@@ -76,9 +70,6 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig *conf) {
         mem->blocks[i].data = calloc(max_n, sizeof(char));
     }
 
-    zfp_field_free(field);
-    zfp_stream_close(zfp);
-
     return mem;
 }
 
@@ -90,91 +81,30 @@ void compressedMemory_destroy(CompressedMemory *mem) {
     free(mem);
 }
 
-bool compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
+void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
     if (!block->used) {
         printf("Error, cannot save uncompressed data, block contains no data.\n");
-        return false;
+        return;
     }
-
-    bitstream* stream;
-    zfp_stream* zfp;
-    zfp_field* field;
-
-    zfp = zfp_stream_open(NULL); 
-    field = zfp_field_alloc();
-
-    zfp_field_set_pointer(field, block->data);
-    zfp_field_set_type(field, zfp_type_qreal);
-    zfp_field_set_size_1d(field, mem->values_per_block); // Until further
-
-    switch (mem->mode) {
-        case 'r':
-            zfp_stream_set_rate(zfp, mem->rate, zfp_type_qreal, mem->dimensions, zfp_false);
-    }
-
-    zfp_stream_set_execution(zfp, mem->exec);
 
     size_t index = block->mem_block_index;
-    stream = stream_open(mem->blocks[index].data, mem->blocks[index].max_size);
+    compression_compress(&mem->imp, &mem->blocks[index], block);
 
-    zfp_stream_set_bit_stream(zfp, stream);
-
-    size_t zfpsize = zfp_compress(zfp, field);
-    mem->blocks[index].size = zfpsize;
     block->used = false;
     block->n_values = 0;
-
-    zfp_field_free(field);  
-    zfp_stream_close(zfp);
-    stream_close(stream);
-
-    return true;
 }
 
 
-bool compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block) {
+void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block) {
     if (block->used) {
         printf("Error, cannot load compressed data, block still in use. Existing block index: %li\n", block->mem_block_index);
-        return false;
-    }
-    
-    bitstream* stream;
-    zfp_stream* zfp;
-    zfp_field* field;
-
-    zfp = zfp_stream_open(NULL); 
-    field = zfp_field_alloc();
-
-    stream = stream_open(mem->blocks[index].data, mem->blocks[index].size);
-    zfp_stream_set_bit_stream(zfp, stream);
-
-    zfp_field_set_type(field, zfp_type_qreal);
-    zfp_field_set_size_1d(field, mem->values_per_block); // Until further
-
-    switch (mem->mode) {
-        case 'r':
-            zfp_stream_set_rate(zfp, mem->rate, zfp_type_qreal, mem->dimensions, zfp_false);
+        return;
     }
 
-    zfp_stream_set_execution(zfp, mem->exec);
-
-    zfp_stream_rewind(zfp);
-
-    zfp_field_set_pointer(field, block->data);
-
-    zfp_decompress(zfp, field);
+    compression_decompress(&mem->imp, &mem->blocks[index], block);
 
     block->mem_block_index = index;
-    block->n_values = mem->blocks[index].n_values;
     block->used = true;
-
-    //printf("## Loaded compressed data into memory, index: %li\n", index);
-
-    zfp_field_free(field);  
-    zfp_stream_close(zfp);
-    stream_close(stream);
-
-    return true;
 }
 
 qreal compressedMemory_get_value(CompressedMemory* mem, RawDataBlock* block, long long int index) {
@@ -192,7 +122,6 @@ qreal compressedMemory_get_value(CompressedMemory* mem, RawDataBlock* block, lon
     // Check if RawDataBlock is the correct block index
     if (!rawDataBlock_is_current_block(block, block_idx)) {
         if (block->used) {
-            //printf("Saving block: %li\n", block->mem_block_index);
             // Compress the existing block and save to memory
             compressedMemory_save(mem, block);
         }
@@ -221,7 +150,6 @@ void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long
     // Check if RawDataBlock is the correct block index
     if (!rawDataBlock_is_current_block(block, block_idx)) {
         if (block->used) {
-            //printf("Saving block: %li\n", block->mem_block_index);
             // Compress the existing block and save to memory
             compressedMemory_save(mem, block);
         }

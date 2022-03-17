@@ -1,34 +1,78 @@
+#include <stdlib.h>
+
 #include "zfp-integration.h"
 
-size_t zfpMaxSize(void *config, RawDataBlock *block) {
-    ZFPConfig zfp_conf = (ZFPConfig*)config;
+void _zfpConfigure(ZFPConfig *zfp_conf, zfp_stream* zfp, zfp_field* field) {
+    switch (zfp_conf->dimensions) {
+        case 1:
+            zfp_field_set_size_1d(field, zfp_conf->nx);
+            break;
+        case 2:
+            zfp_field_set_size_2d(field, zfp_conf->nx, zfp_conf->ny);
+            break;
+        case 3:
+            zfp_field_set_size_3d(field, zfp_conf->nx, zfp_conf->ny, zfp_conf->nz);
+            break;
+        case 4:
+            zfp_field_set_size_4d(field, zfp_conf->nx, zfp_conf->ny, zfp_conf->nz, zfp_conf->nw);
+            break;
+    }
+
+    /* Add support for other moddes */
+    switch (zfp_conf->mode) {
+        case LOSSLESS_MODE:
+            zfp_stream_set_reversible(zfp);
+            break;
+        case ACCURACY_MODE:
+            zfp_stream_set_accuracy(zfp, zfp_conf->tolerance);
+            break;
+        case PERCISION_MODE:
+            zfp_stream_set_precision(zfp, zfp_conf->precision);
+            break;
+        case RATE_MODE:
+            zfp_stream_set_rate(zfp, zfp_conf->rate, zfp_conf->type, zfp_conf->dimensions, zfp_false);
+            break;
+    }
+
+    zfp_stream_set_execution(zfp, zfp_conf->exec);
+}
+
+CompressionImp zfpCreate(ZFPConfig config) {
+    CompressionImp imp;
+    ZFPConfig *zfp_conf = malloc(sizeof(ZFPConfig));
+    (*zfp_conf) = config;
+
+    imp.config = zfp_conf;
+    imp.max_size = zfpMaxSize;
+    imp.compress = zfpCompress;
+    imp.decompress = zfpDecompress;
+
+    return imp;
+}
+
+void zfpDestroy(CompressionImp imp) {
+    free(imp.config);
+}
+
+size_t zfpMaxSize(void *config) {
+    ZFPConfig *zfp_conf = (ZFPConfig*)config;
 
     zfp_stream* zfp = zfp_stream_open(NULL);
     zfp_field* field = zfp_field_alloc();
     size_t max_n = 0;
 
-    zfp_field_set_type(field, zfp_type_qreal);
-    zfp_field_set_size_1d(field, block->n_values);
-
-    /* Add support for other moddes */
-    switch (zfp_conf->mode) {
-        case 'r':
-            zfp_stream_set_rate(zfp, zfp_conf->rate, zfp_type_qreal, zfp_conf->dimensions, zfp_false);
-    }
-
-    zfp_stream_set_execution(zfp, mem->exec);
+    _zfpConfigure(zfp_conf, zfp, field);
 
     max_n = zfp_stream_maximum_size(zfp, field);
 
     zfp_field_free(field);
     zfp_stream_close(zfp);
 
-    return max_n
-
+    return max_n;
 }
 
 void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_block) {
-    ZFPConfig zfp_conf = (ZFPConfig*)config;
+    ZFPConfig *zfp_conf = (ZFPConfig*)config;
 
     bitstream* stream;
     zfp_stream* zfp;
@@ -39,25 +83,15 @@ void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
     field = zfp_field_alloc();
 
     zfp_field_set_pointer(field, in_block->data);
-    zfp_field_set_type(field, zfp_type_qreal);
-    // Add support for handling multi dimensional
-    zfp_field_set_size_1d(field, in_block->n_values);
 
-    /* Add support for other moddes */
-    switch (zfp_conf->mode) {
-        case 'r':
-            zfp_stream_set_rate(zfp, zfp_conf->rate, zfp_type_qreal, zfp_conf->dimensions, zfp_false);
-    }
-
-    zfp_stream_set_execution(zfp, zfp_conf->exec);
+    _zfpConfigure(zfp_conf, zfp, field);
 
     stream = stream_open(out_block->data, out_block->max_size);
 
     zfp_stream_set_bit_stream(zfp, stream);
 
-    size_t zfpsize = zfp_compress(zfp, field);
+    zfpsize = zfp_compress(zfp, field);
     out_block->size = zfpsize;
-    in_block->n_values = 0;
 
     zfp_field_free(field);  
     zfp_stream_close(zfp);
@@ -65,6 +99,7 @@ void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
 }
 
 void zfpDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_block) {
+    ZFPConfig *zfp_conf = (ZFPConfig*)config;
 
     bitstream* stream;
     zfp_stream* zfp;
@@ -73,20 +108,10 @@ void zfpDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_bl
     zfp = zfp_stream_open(NULL); 
     field = zfp_field_alloc();
 
-    stream = stream_open(in_blocks->data, in_blocks->size);
+    stream = stream_open(in_block->data, in_block->size);
     zfp_stream_set_bit_stream(zfp, stream);
 
-    zfp_field_set_type(field, zfp_type_qreal);
-    // Add support for handling multi dimensional
-    zfp_field_set_size_1d(field, in_blocks->n_values);
-
-    /* Add support for other moddes */
-    switch (mem->mode) {
-        case 'r':
-            zfp_stream_set_rate(zfp, zfp_conf->rate, zfp_type_qreal, zfp_conf->dimensions, zfp_false);
-    }
-
-    zfp_stream_set_execution(zfp, zfp_conf->exec);
+    _zfpConfigure(zfp_conf, zfp, field);
 
     zfp_stream_rewind(zfp);
 

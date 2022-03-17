@@ -12,6 +12,7 @@
 # include "QuEST.h"
 # include "QuEST_internal.h"
 # include "QuEST_precision.h"
+# include "zfp-integration.h"
 # include "mt19937ar.h"
 
 # include "QuEST_cpu_internal.h"
@@ -182,7 +183,7 @@ QuESTEnv createQuESTEnv(void) {
     return env;
 }
 
-QuESTEnv createQuESTEnvWithZFP(void) {
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_block_size) {
     // init MPI environment
     
     QuESTEnv env;
@@ -192,6 +193,8 @@ QuESTEnv createQuESTEnvWithZFP(void) {
     env.seeds = NULL;
     env.numSeeds = 0;
     env.comp =  ZFP_COMPRESSION;
+    env.zfp_conf = conf;
+    env.max_block_size = max_block_size;
     seedQuESTDefault(&env);
     
     return env;

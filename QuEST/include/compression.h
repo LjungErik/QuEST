@@ -16,30 +16,12 @@ enum CompressionTechnique {
 
 typedef enum CompressionTechnique Compression;
 
-typedef struct CompressionImp_vtable_ {
-    const size_t (*max_size)(void*, RawDataBlock*);
-    const void (*compress)(void*, CompressedBlock*, RawDataBlock*);
-    const void (*decompress)(void*, CompressedBlock*, RawDataBlock*);
-} CompressionImp_vtable_;
-
-typedef struct CompressionImp {
-    CompressionImp_vtable_ *vtable_;
-    void *config;
-} CompressionImp;
-
 typedef struct CompressedBlock {
     size_t n_values;  // Number of floating point values
     size_t max_size;  // Maximum byte size
     size_t size;      // Current byte size
     void* data;       // Pointer to data of set byte size, DYNAMICALLY ALLOCATE
 } CompressedBlock;
-
-typedef struct CompressedMemory {
-    size_t n_blocks;
-    size_t values_per_block;        // The number of values per each block e.g. x / values_per_block => block index
-    CompressionImp imp;
-    CompressedBlock* blocks;        // The compressed blocks of data
-} CompressedMemory;
 
 typedef struct RawDataBlock {
     size_t n_values;
@@ -49,10 +31,28 @@ typedef struct RawDataBlock {
     qreal* data;
 } RawDataBlock;
 
-CompressedMemory* compressedMemory_allocate(CompressionConfig *config);
+typedef struct CompressionImp {
+    size_t (*max_size)(void*);
+    void (*compress)(void*, CompressedBlock*, RawDataBlock*);
+    void (*decompress)(void*, CompressedBlock*, RawDataBlock*);
+    void *config;
+} CompressionImp;
+
+typedef struct CompressedMemory {
+    size_t n_blocks;
+    size_t values_per_block;        // The number of values per each block e.g. x / values_per_block => block index
+    CompressionImp imp;
+    CompressedBlock* blocks;        // The compressed blocks of data
+} CompressedMemory;
+
+size_t compression_maxSize(CompressionImp *imp);
+void compression_compress(CompressionImp *imp,  CompressedBlock *out_block, RawDataBlock *in_block);
+void compression_decompress(CompressionImp *imp, CompressedBlock *in_block, RawDataBlock *out_block);
+
+CompressedMemory* compressedMemory_allocate(CompressionImp imp);
 void compressedMemory_destroy(CompressedMemory *mem);
-bool compressedMemory_save(CompressedMemory *mem, RawDataBlock* block); // Compressing
-bool compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block); // Decompressing
+void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block); // Compressing
+void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block); // Decompressing
 
 qreal compressedMemory_get_value(CompressedMemory *mem, RawDataBlock *block, long long int index);
 void compressedMemory_set_value(CompressedMemory *mem, RawDataBlock *block, long long int index, qreal value);

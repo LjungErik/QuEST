@@ -34,6 +34,7 @@
 
 # include "QuEST_precision.h"
 # include "compression.h"
+# include "zfp-integration.h"
 
 // prevent C++ name mangling
 #ifdef __cplusplus
@@ -313,9 +314,6 @@ typedef struct DiagonalOp
     ComplexArray deviceOperator;
 } DiagonalOp;
 
-enum CompressionTechnique {NO_COMPRESSION=0, ZFP_COMPRESSION=1};
-
-typedef enum CompressionTechnique Compression;
 /** Represents a system of qubits.
  * Qubits are zero-based
  *
@@ -354,7 +352,9 @@ typedef struct Qureg
     //! Storage for generated QASM output
     QASMLogger* qasmLog;
 
-    Compression comp;
+   Compression comp;
+
+   CompressionImp compImp;
 
    // Contains the memory of compressed real values
    CompressedMemory* real_mem;
@@ -381,6 +381,8 @@ typedef struct QuESTEnv
     unsigned long int* seeds;
     int numSeeds;
     Compression comp;
+    ZFPConfig zfp_conf;
+    size_t max_block_size;
 } QuESTEnv;
 
 /*
@@ -1881,7 +1883,7 @@ QuESTEnv createQuESTEnv(void);
  * @return object representing the execution environment. A single instance is used for each program
  * @author Erik Ljung
  */
-QuESTEnv createQuESTEnvWithZFP(void);
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_block_size);
 
 /** Destroy the QuEST environment. 
  * If something needs to be done to clean up the execution environment, such as 

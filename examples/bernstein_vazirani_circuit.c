@@ -7,7 +7,10 @@
 # include <stdio.h>
 # include <math.h>
 
-# include "QuEST.h" 
+# include "QuEST.h"
+# include "QuEST_precision.h" 
+# include "zfp.h"
+# include "zfp-integration.h"
 
 
 int main (int narg, char** varg) {
@@ -21,16 +24,23 @@ int main (int narg, char** varg) {
     int numQubits = 28;
     int secretNum = pow(2,4) + 1;
 
+    ZFPConfig conf = {
+        .dimensions = 1,
+        .nx = 1024,
+        .mode = 'r',
+        .rate = 16.0,
+        .exec = zfp_exec_serial,
+        .type = zfp_type_qreal,
+    };
+
     // prepare QuEST
-    QuESTEnv env = createQuESTEnvWithZFP();
-    //QuESTEnv env = createQuESTEnv();
+    QuESTEnv env = createQuESTEnvWithZFP(conf, 1024);
 
     // create qureg; let zeroth qubit be ancilla
     Qureg qureg = createQureg(numQubits, env);
     initZeroState(qureg);
 
-
-    /* 	
+    /* 
      * APPLY ALGORITHM
      */
 
