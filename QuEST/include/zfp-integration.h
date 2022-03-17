@@ -3,8 +3,8 @@
 
 #include <stdbool.h>
 
-#include "compression.h"
 #include "QuEST_precision.h"
+#include "compression.h"
 #include "zfp.h"
 
 #define LOSSLESS_MODE 'R'
@@ -27,6 +27,7 @@ typedef struct ZFPConfig {
 } ZFPConfig;
 
 CompressionImp zfpCreate(ZFPConfig config);
+
 void zfpDestroy(CompressionImp imp);
 
 size_t zfpMaxSize(void *config);

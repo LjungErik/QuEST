@@ -50,10 +50,12 @@ void compression_decompress(CompressionImp *imp, CompressedBlock *in_block, RawD
     imp->decompress(imp->config, in_block, out_block);
 }
 
-CompressedMemory* compressedMemory_allocate(CompressionImp imp) {
+CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
     CompressedMemory *mem = calloc(1, sizeof(CompressedMemory));
 
-    mem->imp = imp;
+    mem->imp = conf.imp;
+    mem->n_blocks = conf.n_blocks;
+    mem->values_per_block = conf.values_per_block;
 
     size_t max_n = compression_maxSize(&mem->imp);
 

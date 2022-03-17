@@ -8,8 +8,8 @@
 # include <math.h>
 
 # include "QuEST.h"
-# include "QuEST_precision.h" 
-# include "zfp.h"
+//# include "QuEST_precision.h" 
+//# include "zfp.h"
 # include "zfp-integration.h"
 
 
@@ -21,7 +21,7 @@ int main (int narg, char** varg) {
      */
 
     // model parameters
-    int numQubits = 28;
+    int numQubits = 10;
     int secretNum = pow(2,4) + 1;
 
     ZFPConfig conf = {

@@ -1,8 +1,10 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "zfp-integration.h"
 
 void _zfpConfigure(ZFPConfig *zfp_conf, zfp_stream* zfp, zfp_field* field) {
+    zfp_field_set_type(field, zfp_conf->type);
     switch (zfp_conf->dimensions) {
         case 1:
             zfp_field_set_size_1d(field, zfp_conf->nx);
@@ -17,8 +19,7 @@ void _zfpConfigure(ZFPConfig *zfp_conf, zfp_stream* zfp, zfp_field* field) {
             zfp_field_set_size_4d(field, zfp_conf->nx, zfp_conf->ny, zfp_conf->nz, zfp_conf->nw);
             break;
     }
-
-    /* Add support for other moddes */
+    /* Add support for other modes */
     switch (zfp_conf->mode) {
         case LOSSLESS_MODE:
             zfp_stream_set_reversible(zfp);
