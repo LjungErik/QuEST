@@ -26,6 +26,8 @@ typedef struct ZFPConfig {
     zfp_type type;
 } ZFPConfig;
 
+bool zfpValidateConfig(ZFPConfig config);
+
 CompressionImp zfpCreate(ZFPConfig config);
 
 void zfpDestroy(CompressionImp imp);

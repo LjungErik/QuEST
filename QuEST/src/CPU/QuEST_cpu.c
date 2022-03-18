@@ -1313,8 +1313,6 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
         conf.n_blocks = numAmpsPerRank / values_per_block;
         conf.values_per_block = values_per_block;
 
-        
-
         qureg->real_mem = compressedMemory_allocate(conf);
         qureg->imag_mem = compressedMemory_allocate(conf);
 

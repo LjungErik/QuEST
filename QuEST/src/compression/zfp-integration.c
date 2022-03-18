@@ -38,6 +38,21 @@ void _zfpConfigure(ZFPConfig *zfp_conf, zfp_stream* zfp, zfp_field* field) {
     zfp_stream_set_execution(zfp, zfp_conf->exec);
 }
 
+bool zfpValidateConfig(ZFPConfig config) {
+    if (1 > config.dimensions || config.dimensions > 4 ) {
+        fprintf(stderr, "Invalid dimensions\n");
+        return false;
+    }
+
+    if (config.mode != LOSSLESS_MODE && config.mode != ACCURACY_MODE && 
+        config.mode != PERCISION_MODE && config.mode != RATE_MODE) {
+        fprintf(stderr, "Invalid mode\n");
+        return false;
+    }
+
+    return true;
+}
+
 CompressionImp zfpCreate(ZFPConfig config) {
     CompressionImp imp;
     ZFPConfig *zfp_conf = malloc(sizeof(ZFPConfig));
