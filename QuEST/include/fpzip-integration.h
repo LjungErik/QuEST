@@ -7,6 +7,8 @@
 #include "compression.h"
 #include "fpzip.h"
 
+#define FPZIP_NULL_BUFFER_EXIT_CODE -67
+
 typedef struct FPZIPConfig {
     int nx;
     int ny;

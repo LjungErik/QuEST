@@ -2592,13 +2592,13 @@ void statevec_pauliXLocal(Qureg qureg, int targetQubit)
     qreal stateRealUp,stateImagUp, stateRealLo, stateImagLo;
     long long int thisTask;         
     long long int numTasks=qureg.numAmpsPerChunk>>1; // 1048576 / 2 = 2 ^19 = 524288
-    printf("PauliXLocal, numTasks %lli\n", numTasks);
+    //printf("PauliXLocal, numTasks %lli\n", numTasks);
 
     // set dimensions
     sizeHalfBlock = 1LL << targetQubit;  // 1,2,4,8,16,32
     sizeBlock     = 2LL * sizeHalfBlock; // 2,4,8,15,32,64
-    printf("PauliXLocal, sizeHalfBlock %lli\n", sizeHalfBlock);
-    printf("PauliXLocal, sizeBlock %lli\n", sizeBlock);
+    //printf("PauliXLocal, sizeHalfBlock %lli\n", sizeHalfBlock);
+    //printf("PauliXLocal, sizeBlock %lli\n", sizeBlock);
 
     // Handle compress and decompress on regular intervals
     for (thisTask=0; thisTask<numTasks; thisTask++) {
@@ -3065,9 +3065,9 @@ void statevec_hadamardLocal(Qureg qureg, int targetQubit)
 
     qreal recRoot2 = 1.0/sqrt(2);
 
-    printf("HadamardLocal, numTasks: %lli\n", numTasks);
-    printf("HadamardLocal, sizeHalfBlock: %lli\n", sizeHalfBlock);
-    printf("HadamardLocal, sizeBlock: %lli\n", sizeBlock);
+    //printf("HadamardLocal, numTasks: %lli\n", numTasks);
+    //printf("HadamardLocal, sizeHalfBlock: %lli\n", sizeHalfBlock);
+    //printf("HadamardLocal, sizeBlock: %lli\n", sizeBlock);
 
     for (thisTask=0; thisTask<numTasks; thisTask++) {
         thisBlock   = thisTask / sizeHalfBlock;
@@ -3683,7 +3683,7 @@ void statevec_multiControlledPhaseFlip(Qureg qureg, int *controlQubits, int numC
 
     stateVecSize = qureg.numAmpsPerChunk;
 
-    printf("MultiControlledPhaseFlip, StateVecSize: %lli\n", stateVecSize);
+    //printf("MultiControlledPhaseFlip, StateVecSize: %lli\n", stateVecSize);
 
     for (index=0; index<stateVecSize; index++) {
         if (mask == (mask & (index+chunkId*chunkSize)) ) {
