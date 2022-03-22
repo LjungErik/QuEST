@@ -11,7 +11,8 @@
 
 enum CompressionTechnique {
     NO_COMPRESSION=0,
-    ZFP_COMPRESSION=1
+    ZFP_COMPRESSION=1,
+    FPZIP_COMPRESSION=2,
 };
 
 typedef enum CompressionTechnique Compression;

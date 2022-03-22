@@ -35,6 +35,7 @@
 # include "QuEST_precision.h"
 # include "compression.h"
 # include "zfp-integration.h"
+# include "fpzip-integration.h"
 
 // prevent C++ name mangling
 #ifdef __cplusplus
@@ -350,7 +351,7 @@ typedef struct Qureg
     qreal *firstLevelReduction, *secondLevelReduction;
 
     //! Storage for generated QASM output
-    QASMLogger* qasmLog;
+   QASMLogger* qasmLog;
 
    Compression comp;
 
@@ -382,6 +383,7 @@ typedef struct QuESTEnv
     int numSeeds;
     Compression comp;
     ZFPConfig zfp_conf;
+    FPZIPConfig fpzip_conf;
     size_t max_values_per_block;
     bool use_dynamic_allocation;
 } QuESTEnv;
@@ -1885,6 +1887,21 @@ QuESTEnv createQuESTEnv(void);
  * @author Erik Ljung
  */
 QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation);
+
+/** Create the QuEST execution environment with FPZIP compression.
+ * This should be called only once, and the environment should be freed with destroyQuESTEnv at the end
+ * of the user's code.
+ * @see
+ * - reportQuESTEnv()
+ * - destroyQuESTEnv()
+ * - syncQuESTEnv()
+ *
+ * @ingroup type
+ * @return object representing the execution environment. A single instance is used for each program
+ * @author Erik Ljung
+ */
+QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block);
+
 
 /** Destroy the QuEST environment. 
  * If something needs to be done to clean up the execution environment, such as 

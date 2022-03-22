@@ -117,7 +117,7 @@ void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
 
     if (buffer == NULL) {
         printf("PANIC: No valid buffer exists!");
-        exit(PANIC_NULL_BUFFER_EXIT_CODE);
+        exit(ZPF_NULL_BUFFER_EXIT_CODE);
     }
 
     stream = stream_open(buffer, buffer_size);

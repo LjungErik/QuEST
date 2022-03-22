@@ -16,7 +16,7 @@ project(QuEST_Project)
 # ----- USER OPTIONS ----------------------------------------------------------
 # -----------------------------------------------------------------------------
 
-set(USER_SOURCE  "examples/zfp_grover_search.c"  CACHE STRING "Source to build with QuEST library")
+set(USER_SOURCE  "examples/compression_grover_search.c"  CACHE STRING "Source to build with QuEST library")
 set(OUTPUT_EXE   "grover"  CACHE STRING "Executable to compile to")
 
 option(TESTING "Enable unit testing. This disables compiling USER_SOURCE" OFF)

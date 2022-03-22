@@ -2,7 +2,7 @@
 #include "compression.h"
 
 qreal getQuregRealValue(Qureg *qureg, long long int index) {
-    if (qureg->comp == ZFP_COMPRESSION) {
+    if (qureg->comp != NO_COMPRESSION) {
         return compressedMemory_get_value(qureg->real_mem, qureg->real_block, index);
     } else {
         return qureg->stateVec.real[index];
@@ -10,7 +10,7 @@ qreal getQuregRealValue(Qureg *qureg, long long int index) {
 }
 
 void setQuregRealValue(Qureg *qureg, long long int index, qreal value) {
-    if (qureg->comp == ZFP_COMPRESSION) {
+    if (qureg->comp != NO_COMPRESSION) {
         compressedMemory_set_value(qureg->real_mem, qureg->real_block, index, value);
     } else {
         qureg->stateVec.real[index] = value;
@@ -18,7 +18,7 @@ void setQuregRealValue(Qureg *qureg, long long int index, qreal value) {
 }
 
 qreal getQuregImagValue(Qureg *qureg, long long int index) {
-    if (qureg->comp == ZFP_COMPRESSION) {
+    if (qureg->comp != NO_COMPRESSION) {
         return compressedMemory_get_value(qureg->imag_mem, qureg->imag_block, index);
     } else {
         return qureg->stateVec.imag[index];
@@ -26,7 +26,7 @@ qreal getQuregImagValue(Qureg *qureg, long long int index) {
 }
 
 void setQuregImagValue(Qureg *qureg, long long int index, qreal value) {
-    if (qureg->comp == ZFP_COMPRESSION) {
+    if (qureg->comp != NO_COMPRESSION) {
         compressedMemory_set_value(qureg->imag_mem, qureg->imag_block, index, value);
     } else {
         qureg->stateVec.imag[index] = value;

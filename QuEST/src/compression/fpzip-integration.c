@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "fpzip.h"
 #include "fpzip-integration.h"
@@ -42,8 +43,8 @@ void fpzipDestory(CompressionImp imp) {
 size_t fpzipMaxSize(void *config) {
     FPZIPConfig *fpz_conf = (FPZIPConfig*)config;
 
-    size_t count = (size_t)fpz_conf->nx * fpz_conf->ny * fpz_conf->nz * fpz_conf->nf;
-    size_t size = (type == FPZIP_TYPE_FLOAT ? sizeof(float) : sizeof(double));
+    size_t count = (size_t)fpz_conf->nx * fpz_conf->ny * fpz_conf->nz * fpz_conf->nw;
+    size_t size = (fpz_conf->type == FPZIP_TYPE_FLOAT ? sizeof(float) : sizeof(double));
 
     return count * size;
 }
@@ -67,16 +68,16 @@ void fpzipCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bl
 
     if (buffer == NULL) {
         printf("PANIC: No valid buffer exists!");
-        exit(PANIC_NULL_BUFFER_EXIT_CODE);
+        exit(FPZIP_NULL_BUFFER_EXIT_CODE);
     }
 
-    FPZ* fpz = fpzip_write_to_buffer(buffer, buffer_size);
+    fpz = fpzip_write_to_buffer(buffer, buffer_size);
     _fpzipConfigure(fpz_conf, fpz);
 
-    fpzsize = fpzip_write(fpz, data);
+    fpzsize = fpzip_write(fpz, in_block->data);
     if (!fpzsize) {
         fprintf(stderr, "compression failed: %s\n", fpzip_errstr[fpzip_errno]);
-        return EXIT_FAILURE;
+        exit(-1);
     }
 
     /* Handling Dynamic Allocation */

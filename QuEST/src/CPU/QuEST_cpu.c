@@ -1306,7 +1306,14 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
     if (env.comp == ZFP_COMPRESSION) {
         size_t values_per_block = numAmpsPerRank < env.max_values_per_block ? numAmpsPerRank : env.max_values_per_block;
 
-        qureg->compImp = zfpCreate(env.zfp_conf);
+        if (env.comp == ZFP_COMPRESSION) {
+            qureg->compImp = zfpCreate(env.zfp_conf);
+        } else if (env.comp == FPZIP_COMPRESSION) {
+            qureg->compImp = fpzipCreate(env.fpzip_conf);
+        } else {
+            fprintf(stderr, "Unknown compression type not supported: %i", env.comp);
+            exit(1);
+        }
 
         CompressionConfig conf;
         conf.imp = qureg->compImp;
