@@ -1519,25 +1519,10 @@ void statevec_initPlusState (Qureg qureg)
     stateVecSize = chunkSize*qureg.numChunks;
     qreal normFactor = 1.0/sqrt((qreal)stateVecSize);
 
-    // Can't use qureg->stateVec as a private OMP var
-    qreal *stateVecReal = qureg.stateVec.real;
-    qreal *stateVecImag = qureg.stateVec.imag;
-
     // initialise the state to |+++..+++> = 1/normFactor {1, 1, 1, ...}
-# ifdef _OPENMP
-# pragma omp parallel \
-    default  (none) \
-    shared   (chunkSize, stateVecReal, stateVecImag, normFactor) \
-    private  (index) 
-# endif
-    {
-# ifdef _OPENMP
-# pragma omp for schedule (static)
-# endif
-        for (index=0; index<chunkSize; index++) {
-            stateVecReal[index] = normFactor;
-            stateVecImag[index] = 0.0;
-        }
+    for (index=0; index<chunkSize; index++) {
+        setQuregRealValue(&qureg, index, normFactor);
+        setQuregImagValue(&qureg, index, 0.0);
     }
 }
 
@@ -3078,39 +3063,27 @@ void statevec_hadamardLocal(Qureg qureg, int targetQubit)
     sizeHalfBlock = 1LL << targetQubit;  
     sizeBlock     = 2LL * sizeHalfBlock; 
 
-    // Can't use qureg.stateVec as a private OMP var
-    qreal *stateVecReal = qureg.stateVec.real;
-    qreal *stateVecImag = qureg.stateVec.imag;
-
     qreal recRoot2 = 1.0/sqrt(2);
 
-# ifdef _OPENMP
-# pragma omp parallel \
-    default  (none) \
-    shared   (sizeBlock,sizeHalfBlock, stateVecReal,stateVecImag, recRoot2, numTasks) \
-    private  (thisTask,thisBlock ,indexUp,indexLo, stateRealUp,stateImagUp,stateRealLo,stateImagLo)
-# endif
-    {
-# ifdef _OPENMP
-# pragma omp for schedule (static)
-# endif
-        for (thisTask=0; thisTask<numTasks; thisTask++) {
-            thisBlock   = thisTask / sizeHalfBlock;
-            indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
-            indexLo     = indexUp + sizeHalfBlock;
+    printf("HadamardLocal, numTasks: %lli\n", numTasks);
+    printf("HadamardLocal, sizeHalfBlock: %lli\n", sizeHalfBlock);
+    printf("HadamardLocal, sizeBlock: %lli\n", sizeBlock);
 
-            stateRealUp = stateVecReal[indexUp];
-            stateImagUp = stateVecImag[indexUp];
+    for (thisTask=0; thisTask<numTasks; thisTask++) {
+        thisBlock   = thisTask / sizeHalfBlock;
+        indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
+        indexLo     = indexUp + sizeHalfBlock;
 
-            stateRealLo = stateVecReal[indexLo];
-            stateImagLo = stateVecImag[indexLo];
+        stateRealUp = getQuregRealValue(&qureg, indexUp);
+        stateImagUp = getQuregImagValue(&qureg, indexUp);
+        stateRealLo = getQuregRealValue(&qureg, indexLo);
+        stateImagLo = getQuregImagValue(&qureg, indexLo);
 
-            stateVecReal[indexUp] = recRoot2*(stateRealUp + stateRealLo);
-            stateVecImag[indexUp] = recRoot2*(stateImagUp + stateImagLo);
+        setQuregRealValue(&qureg, indexUp, recRoot2*(stateRealUp + stateRealLo));
+        setQuregImagValue(&qureg, indexUp, recRoot2*(stateImagUp + stateImagLo));
 
-            stateVecReal[indexLo] = recRoot2*(stateRealUp - stateRealLo);
-            stateVecImag[indexLo] = recRoot2*(stateImagUp - stateImagLo);
-        } 
+        setQuregRealValue(&qureg, indexLo, recRoot2*(stateRealUp - stateRealLo));
+        setQuregImagValue(&qureg, indexLo, recRoot2*(stateImagUp - stateImagLo));
     }
 }
 
@@ -3709,24 +3682,17 @@ void statevec_multiControlledPhaseFlip(Qureg qureg, int *controlQubits, int numC
     long long int mask = getQubitBitMask(controlQubits, numControlQubits);
 
     stateVecSize = qureg.numAmpsPerChunk;
-    qreal *stateVecReal = qureg.stateVec.real;
-    qreal *stateVecImag = qureg.stateVec.imag;
 
-# ifdef _OPENMP
-# pragma omp parallel \
-    default  (none)              \
-    shared   (stateVecSize, stateVecReal,stateVecImag, mask, chunkId,chunkSize ) \
-    private  (index)
-# endif
-    {
-# ifdef _OPENMP
-# pragma omp for schedule (static)
-# endif
-        for (index=0; index<stateVecSize; index++) {
-            if (mask == (mask & (index+chunkId*chunkSize)) ){
-                stateVecReal [index] = - stateVecReal [index];
-                stateVecImag [index] = - stateVecImag [index];
-            }
+    printf("MultiControlledPhaseFlip, StateVecSize: %lli\n", stateVecSize);
+
+    for (index=0; index<stateVecSize; index++) {
+        if (mask == (mask & (index+chunkId*chunkSize)) ) {
+
+            qreal stateVecReal = getQuregRealValue(&qureg, index);
+            qreal stateVecImag = getQuregImagValue(&qureg, index);
+
+            setQuregRealValue(&qureg, index, -stateVecReal);
+            setQuregImagValue(&qureg, index, -stateVecImag);
         }
     }
 }

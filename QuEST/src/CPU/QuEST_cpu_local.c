@@ -10,6 +10,7 @@
  */
 
 # include "QuEST.h"
+# include "QuEST_extended.h"
 # include "QuEST_internal.h"
 # include "QuEST_precision.h"
 # include "zfp-integration.h"
@@ -240,11 +241,11 @@ void getEnvironmentString(QuESTEnv env, char str[200]){
 }
 
 qreal statevec_getRealAmp(Qureg qureg, long long int index){
-    return qureg.stateVec.real[index];
+    return getQuregRealValue(&qureg, index);
 }
 
 qreal statevec_getImagAmp(Qureg qureg, long long int index){
-    return qureg.stateVec.imag[index];
+    return getQuregImagValue(&qureg, index);
 }
 
 void statevec_compactUnitary(Qureg qureg, int targetQubit, Complex alpha, Complex beta) 
