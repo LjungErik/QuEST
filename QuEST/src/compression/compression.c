@@ -61,15 +61,20 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
 
     /* Allocate the number of blocks */
     /* For each block allocate the memory for max_n */
-    printf("Allocating %li blocks for memory with block size %li, total size: %lli\n", 
+    printf("Creating %li blocks for memory, Max block size %li, total Max size: %lli\n", 
                 mem->n_blocks, max_n, (long long int) (mem->n_blocks * max_n));
 
     mem->blocks = calloc(mem->n_blocks, sizeof(CompressedBlock));
     for (int i = 0; i < mem->n_blocks; i++) {
         mem->blocks[i].n_values = mem->values_per_block;
         mem->blocks[i].max_size = max_n;
-        mem->blocks[i].size = 0; 
-        mem->blocks[i].data = calloc(max_n, sizeof(char));
+        mem->blocks[i].size = 0;
+        // if dynamic allocation
+        if (conf.use_dynamic_allocation) {
+            mem->blocks[i].data = NULL;
+        } else {
+            mem->blocks[i].data = calloc(max_n, sizeof(char));
+        }
     }
 
     return mem;
@@ -77,7 +82,9 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
 
 void compressedMemory_destroy(CompressedMemory *mem) {
     for (int i = 0; i < mem->n_blocks; i++) {
-        free(mem->blocks[i].data);
+        if (mem->blocks[i].data != NULL) {
+            free(mem->blocks[i].data);
+        }
     }
     free(mem->blocks);
     free(mem);
@@ -103,7 +110,11 @@ void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
         return;
     }
 
+    //printf("Trying to decompressMemory\n");
+
     compression_decompress(&mem->imp, &mem->blocks[index], block);
+
+    //printf("decompressMemory DONE\n");
 
     block->mem_block_index = index;
     block->used = true;
@@ -163,11 +174,20 @@ void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long
     rawDataBlock_set_value(block, internal_idx, value);
 }
 
-RawDataBlock* rawDataBlock_allocate(size_t n_values) {
+RawDataBlock* rawDataBlock_allocate(CompressionConfig conf) {
     RawDataBlock* block = calloc(1, sizeof(RawDataBlock));
-    size_t data_size = (size_t) (n_values * sizeof(*(block->data)));
+    size_t data_size = (size_t) (conf.values_per_block * sizeof(*(block->data)));
 
     printf("Allocating Raw Data block with data size: %li\n", data_size);
+
+    if (conf.use_dynamic_allocation) {
+        size_t max_n = compression_maxSize(&conf.imp);
+        block->tmp_storage = calloc(max_n, sizeof(char));
+        block->tmp_max_size = max_n;
+    } else {
+        block->tmp_storage = NULL;
+        block->tmp_max_size = 0;
+    }
 
     block->data = malloc(data_size);
     block->size = data_size;
@@ -179,6 +199,10 @@ RawDataBlock* rawDataBlock_allocate(size_t n_values) {
 }
 
 void rawDataBlock_destroy(RawDataBlock* block) {
+    if (block->tmp_storage != NULL) {
+        free(block->tmp_storage);
+    }
+
     free(block->data);
     free(block);
 }

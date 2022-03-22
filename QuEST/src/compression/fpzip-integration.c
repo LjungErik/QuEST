@@ -21,12 +21,12 @@ bool fpzipValidateConfig(FPZIPConfig config) {
     return true;
 }
 
-CompressionImp fpzipCreate(FPZIP config) {
+CompressionImp fpzipCreate(FPZIPConfig config) {
     CompressionImp imp;
     FPZIPConfig *fpzip_conf = malloc(sizeof(FPZIPConfig));
     (*fpzip_conf)  = config;
 
-    imp.config = fpzip_config;
+    imp.config = fpzip_conf;
     imp.max_size = fpzipMaxSize;
     imp.compress = fpzipCompress;
     imp.decompress = fpzipDecompress;
@@ -42,13 +42,17 @@ size_t fpzipMaxSize(void *config) {
     FPZIPConfig *fpz_conf = (FPZIPConfig*)config;
 
     /* temporary solution TODO: fix this*/
-    return fpz_conf.nx;
+    return fpz_conf->nx;
 }
 
 void fpzipCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_block) {
     /* write the code to compress the data blocks */
+
+    //_fpzipConfigure();
 }
 
 void fpzipDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_block) {
     /* write the code to decompress the data blocks */
+
+    //_fpzipConfigure();
 }

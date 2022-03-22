@@ -1304,7 +1304,7 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
 
     printf("Original size: %li bytes \n", arrSize*2);
     if (env.comp == ZFP_COMPRESSION) {
-        size_t values_per_block = numAmpsPerRank < env.max_block_size ? numAmpsPerRank : env.max_block_size;
+        size_t values_per_block = numAmpsPerRank < env.max_values_per_block ? numAmpsPerRank : env.max_values_per_block;
 
         qureg->compImp = zfpCreate(env.zfp_conf);
 
@@ -1312,12 +1312,15 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
         conf.imp = qureg->compImp;
         conf.n_blocks = numAmpsPerRank / values_per_block;
         conf.values_per_block = values_per_block;
+        conf.use_dynamic_allocation = env.use_dynamic_allocation;
+
+        printf("n_blocks: %li, values_per_block: %li\n", conf.n_blocks, conf.values_per_block);
 
         qureg->real_mem = compressedMemory_allocate(conf);
         qureg->imag_mem = compressedMemory_allocate(conf);
 
-        qureg->real_block = rawDataBlock_allocate(values_per_block);
-        qureg->imag_block = rawDataBlock_allocate(values_per_block);
+        qureg->real_block = rawDataBlock_allocate(conf);
+        qureg->imag_block = rawDataBlock_allocate(conf);
     }
     else {
         qureg->stateVec.real = malloc(arrSize);

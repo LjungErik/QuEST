@@ -12,6 +12,8 @@
 #define PERCISION_MODE 'p'
 #define RATE_MODE 'r'
 
+#define PANIC_NULL_BUFFER_EXIT_CODE -66
+
 typedef struct ZFPConfig {
     unsigned int dimensions;
     size_t nx;

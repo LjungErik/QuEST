@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "zfp-integration.h"
 
@@ -94,6 +95,8 @@ void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
     zfp_stream* zfp;
     zfp_field* field;
     size_t zfpsize;
+    void* buffer;
+    size_t buffer_size;
 
     zfp = zfp_stream_open(NULL); 
     field = zfp_field_alloc();
@@ -102,11 +105,41 @@ void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
 
     _zfpConfigure(zfp_conf, zfp, field);
 
-    stream = stream_open(out_block->data, out_block->max_size);
+    if (in_block->tmp_storage != NULL) {
+         /* Use temporary block for dynamic memory allocation */
+        buffer = in_block->tmp_storage;
+        buffer_size = in_block->tmp_max_size;
+    } else {
+       /* Use the assigned memory in this case */
+        buffer = out_block->data;
+        buffer_size = out_block->max_size;
+    }
+
+    if (buffer == NULL) {
+        printf("PANIC: No valid buffer exists!");
+        exit(PANIC_NULL_BUFFER_EXIT_CODE);
+    }
+
+    stream = stream_open(buffer, buffer_size);
 
     zfp_stream_set_bit_stream(zfp, stream);
 
     zfpsize = zfp_compress(zfp, field);
+
+    /* Handling Dynamic Allocation */
+    if (buffer != out_block->data) {
+        /* Check if block is allocated already or not */
+        if (out_block->data == NULL) {
+            /* No memory block exists */
+            out_block->data = malloc(zfpsize);
+        } else if(out_block->size != zfpsize) {
+            /* Reallocate memory block */
+            out_block->data = realloc(out_block->data, zfpsize);
+        }
+        /* Copy all the data from the buffer to the out block */
+        memcpy(out_block->data, buffer, zfpsize);
+    }
+
     out_block->size = zfpsize;
 
     zfp_field_free(field);  
@@ -121,24 +154,29 @@ void zfpDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_bl
     zfp_stream* zfp;
     zfp_field* field;
 
-    zfp = zfp_stream_open(NULL); 
-    field = zfp_field_alloc();
+    /* Check if in block actually has data */
+    if (in_block->data != NULL) {
+        zfp = zfp_stream_open(NULL); 
+        field = zfp_field_alloc();
 
-    stream = stream_open(in_block->data, in_block->size);
-    zfp_stream_set_bit_stream(zfp, stream);
+        stream = stream_open(in_block->data, in_block->size);
+        zfp_stream_set_bit_stream(zfp, stream);
 
-    _zfpConfigure(zfp_conf, zfp, field);
+        _zfpConfigure(zfp_conf, zfp, field);
 
-    zfp_stream_rewind(zfp);
+        zfp_stream_rewind(zfp);
 
-    zfp_field_set_pointer(field, out_block->data);
+        zfp_field_set_pointer(field, out_block->data);
 
-    zfp_decompress(zfp, field);
+        zfp_decompress(zfp, field);
 
+        zfp_field_free(field);  
+        zfp_stream_close(zfp);
+        stream_close(stream);
+    } else {
+        /* No data exists, clear RawDataBlock */
+        memset(out_block->data, 0, out_block->size);
+    }
+    
     out_block->n_values = in_block->n_values;
-
-    zfp_field_free(field);  
-    zfp_stream_close(zfp);
-    stream_close(stream);
-
 }

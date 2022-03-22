@@ -382,7 +382,8 @@ typedef struct QuESTEnv
     int numSeeds;
     Compression comp;
     ZFPConfig zfp_conf;
-    size_t max_block_size;
+    size_t max_values_per_block;
+    bool use_dynamic_allocation;
 } QuESTEnv;
 
 /*
@@ -1883,7 +1884,7 @@ QuESTEnv createQuESTEnv(void);
  * @return object representing the execution environment. A single instance is used for each program
  * @author Erik Ljung
  */
-QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_block_size);
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation);
 
 /** Destroy the QuEST environment. 
  * If something needs to be done to clean up the execution environment, such as 

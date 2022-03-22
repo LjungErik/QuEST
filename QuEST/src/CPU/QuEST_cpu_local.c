@@ -183,9 +183,12 @@ QuESTEnv createQuESTEnv(void) {
     return env;
 }
 
-QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_block_size) {
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation) {
     // init MPI environment
     
+    printf("Maximum values per block: %li\n", max_values_per_block);
+
+
     QuESTEnv env;
     env.rank=0;
     env.numRanks=1;
@@ -194,7 +197,8 @@ QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_block_size) {
     env.numSeeds = 0;
     env.comp =  ZFP_COMPRESSION;
     env.zfp_conf = conf;
-    env.max_block_size = max_block_size;
+    env.max_values_per_block = max_values_per_block;
+    env.use_dynamic_allocation = use_dynamic_allocation;
     seedQuESTDefault(&env);
     
     return env;

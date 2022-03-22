@@ -20,7 +20,7 @@ typedef struct CompressedBlock {
     size_t n_values;  // Number of floating point values
     size_t max_size;  // Maximum byte size
     size_t size;      // Current byte size
-    void* data;       // Pointer to data of set byte size, DYNAMICALLY ALLOCATE
+    void* data;       // Pointer to data of set byte size
 } CompressedBlock;
 
 typedef struct RawDataBlock {
@@ -29,6 +29,8 @@ typedef struct RawDataBlock {
     size_t mem_block_index;         // Index of the block in compressed memory
     bool used;
     qreal* data;
+    void* tmp_storage;              // Temporary data storage used for compressing data dynamically
+    size_t tmp_max_size;            // Max size of temporary data
 } RawDataBlock;
 
 typedef struct CompressionImp {
@@ -49,6 +51,7 @@ typedef struct CompressionConfig {
     CompressionImp imp;
     size_t n_blocks;
     size_t values_per_block;
+    bool use_dynamic_allocation;
 } CompressionConfig;
 
 size_t compression_maxSize(CompressionImp *imp);
@@ -63,7 +66,7 @@ void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
 qreal compressedMemory_get_value(CompressedMemory *mem, RawDataBlock *block, long long int index);
 void compressedMemory_set_value(CompressedMemory *mem, RawDataBlock *block, long long int index, qreal value);
 
-RawDataBlock* rawDataBlock_allocate(size_t n_values);
+RawDataBlock* rawDataBlock_allocate(CompressionConfig conf);
 void rawDataBlock_destroy(RawDataBlock* block);
 bool rawDataBlock_is_current_block(RawDataBlock* block, long long int block_idx);
 

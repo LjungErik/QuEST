@@ -8,6 +8,7 @@
 # include <stdlib.h>
 # include <math.h>
 # include <unistd.h>
+# include <stdbool.h>
 
 # include "QuEST.h"
 # include "QuEST_precision.h"
@@ -19,6 +20,7 @@
 static void usage() {
     fprintf(stderr, "Usage: bernvaz <options>\n");
     fprintf(stderr, "General Options:\n");
+    fprintf(stderr, "  -d : use dynamic memory allocation for compressed blocks\n");
     fprintf(stderr, "  -q <qubits>: number of qubits\n");
     fprintf(stderr, "  -1 <nx> : dimensions for 1D array a[nx]\n");
     fprintf(stderr, "  -2 <nx> <ny> : dimensions for 2D array a[ny][nx]\n");
@@ -37,12 +39,12 @@ static void usage() {
     fprintf(stderr, "Examples:\n");
     fprintf(stderr, "  -q 28 -3 100 100 100 -r 16 : 2x fixed-rate compression of 100x100x100 floats\n");
     fprintf(stderr, "  -q 28 -1 1000000 -r 32 : 2x fixed-rate compression of 1M doubles\n");
-    fprintf(stderr, "  -q 28 -2 1000 1000 -p 32 : 32-bit precision compression of 1000x1000 doubles\n");
-    fprintf(stderr, "  -q 28 -1 1000000 -a 1e-9 : compression of 1M doubles with < 1e-9 max error\n");
+    fprintf(stderr, "  -q 28 -2 1000 1000 -p 32 -d : 32-bit precision compression of 1000x1000 doubles with dynamic allocation\n");
+    fprintf(stderr, "  -q 28 -1 1000000 -a 1e-9 -d : compression of 1M doubles with < 1e-9 max error with dynamic allocation\n");
     exit(EXIT_FAILURE);
 }
 
-void bernstein_vazirani(int numQubits, size_t block_size, ZFPConfig conf) {
+void bernstein_vazirani(int numQubits, size_t block_size, bool use_dynamic_allocation, ZFPConfig conf) {
     /* 	
      * PREPARE QuEST
      */
@@ -51,7 +53,7 @@ void bernstein_vazirani(int numQubits, size_t block_size, ZFPConfig conf) {
     int secretNum = pow(2,4) + 1;
 
     // prepare QuEST
-    QuESTEnv env = createQuESTEnvWithZFP(conf, 1024);
+    QuESTEnv env = createQuESTEnvWithZFP(conf, block_size, use_dynamic_allocation);
 
     // create qureg; let zeroth qubit be ancilla
     Qureg qureg = createQureg(numQubits, env);
@@ -113,6 +115,7 @@ int main (int argc, char** argv) {
     double rate = 0;
     zfp_exec_policy exec = zfp_exec_serial;
     zfp_type type = zfp_type_qreal;
+    bool use_dynamic_allocation = false;
 
     /* parse command-line arguments */
     for (int i = 1; i < argc; i++) {
@@ -175,6 +178,9 @@ int main (int argc, char** argv) {
         case 'q':
             if (++i == argc || sscanf(argv[i], "%u", &qubits) != 1) { usage(); }
             break;
+        case 'd':
+            use_dynamic_allocation = true;
+            break;
         default:
             usage();
             break;
@@ -195,6 +201,9 @@ int main (int argc, char** argv) {
         .type = zfp_type_qreal,
     };
 
+    printf("nx: %li\n", nx);
+    printf("block_size: %li\n", block_size);
+
     if (!zfpValidateConfig(conf)) {
         usage();
     } else if (qubits == 0) {
@@ -202,7 +211,7 @@ int main (int argc, char** argv) {
         usage();
     }
 
-    bernstein_vazirani(qubits, block_size, conf);
+    bernstein_vazirani(qubits, block_size, use_dynamic_allocation, conf);
 
     return 0;
 }
