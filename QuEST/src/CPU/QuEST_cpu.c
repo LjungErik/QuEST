@@ -14,11 +14,13 @@
 # include "QuEST_internal.h"
 # include "QuEST_precision.h"
 # include "zfp-integration.h"
+# include "fpzip-integration.h"
 # include "mt19937ar.h"
 
 # include "QuEST_cpu_internal.h"
 # include "QuEST_extended.h"
 # include "zfp.h"
+# include "fpzip.h"
 
 # include <math.h>  
 # include <stdio.h>
@@ -1303,7 +1305,7 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
     size_t arrSize = (size_t) (numAmpsPerRank * sizeof(qreal));
 
     printf("Original size: %li bytes \n", arrSize*2);
-    if (env.comp == ZFP_COMPRESSION) {
+    if (env.comp != NO_COMPRESSION) {
         size_t values_per_block = numAmpsPerRank < env.max_values_per_block ? numAmpsPerRank : env.max_values_per_block;
 
         if (env.comp == ZFP_COMPRESSION) {
@@ -1349,9 +1351,13 @@ void statevec_destroyQureg(Qureg qureg, QuESTEnv env){
     qureg.numAmpsTotal = 0;
     qureg.numAmpsPerChunk = 0;
 
-    if (env.comp == ZFP_COMPRESSION) {
+    if (env.comp != NO_COMPRESSION) {
         // free space
-        zfpDestroy(qureg.compImp);
+        if (env.comp == ZFP_COMPRESSION) {
+            zfpDestroy(qureg.compImp);
+        } else if (env.comp == FPZIP_COMPRESSION) {
+            fpzipDestroy(qureg.compImp);
+        }
 
         compressedMemory_destroy(qureg.real_mem);
         compressedMemory_destroy(qureg.imag_mem);
@@ -1508,7 +1514,11 @@ void statevec_initBlankState (Qureg qureg)
 
 void statevec_initZeroState (Qureg qureg)
 {
+    printf("Running initZeroState\n");
+
     statevec_initBlankState(qureg);
+
+    printf("Running initBlankState\n");
     if (qureg.chunkId==0){
         // zero state |0000..0000> has probability 1
         setQuregRealValue(&qureg, 0, 1.0);

@@ -166,11 +166,9 @@ void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long
             // Compress the existing block and save to memory
             compressedMemory_save(mem, block);
         }
-        // Decompress the specific block
         compressedMemory_load(mem, block_idx, block);
     }  
         
-    // Get specific data for interal index in the uncompressed raw data block
     rawDataBlock_set_value(block, internal_idx, value);
 }
 

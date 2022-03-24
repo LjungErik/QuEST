@@ -114,10 +114,10 @@ void grover_search(int numQubits, QuESTEnv env) {
         applyDiffuser(qureg, numQubits);
         
         // monitor the probability of the solution state
-        printf("prob of solution |%d> = %g\n", 
-            solElem, getProbAmp(qureg, solElem));
+        printf("[%i] prob of solution |%d> = %g\n", 
+           r, solElem, getProbAmp(qureg, solElem));
     }
-    
+
     // free memory 
     destroyQureg(qureg, env);
     destroyQuESTEnv(env);

@@ -36,7 +36,7 @@ CompressionImp fpzipCreate(FPZIPConfig config) {
     return imp;
 }
 
-void fpzipDestory(CompressionImp imp) {
+void fpzipDestroy(CompressionImp imp) {
     free(imp.config);
 }
 
