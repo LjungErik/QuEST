@@ -30,6 +30,8 @@ make
 # include "fpzip-integration.h"
 # include "fpzip.h"
 
+# include "fpc-integration.h"
+# include "fpc.h"
 
 /* effect |solElem> -> -|solElem> via a 
  * multi-controlled phase flip gate 
@@ -160,6 +162,20 @@ static void usage_fpz() {
     fprintf(stderr, "Examples:\n");
     fprintf(stderr, "  -q 28 -3 100 100 100 -p 16 : 16-bit precision compression of 100x100x100 floats\n");
     fprintf(stderr, "  -q 28 -2 1000 1000 -p 32 : 32-bit precision compression of 1000x1000 floats\n");
+    exit(EXIT_FAILURE);
+}
+
+static void usage_fpc() {
+    fprintf(stderr, "Usage: grover fpc <options>\n");
+    fprintf(stderr, "General Options:\n");
+    fprintf(stderr, "  -q <qubits>: number of qubits\n");
+    fprintf(stderr, "  -b <block_size> : max size of a block\n");
+    fprintf(stderr, "Compression parameters:\n");
+    fprintf(stderr, "  -p <predsizem1> : magic number (unsure what it does)\n");
+    fprintf(stderr, "Examples:\n");
+    fprintf(stderr, "  -q 28 -b 1024 -p 16 : 32 magic number compression of 1024 floats\n");
+    fprintf(stderr, "  -q 28 -b 1024 -p 32 : 32 magic number compression of 1024 floats\n");
+    fprintf(stderr, "ONLY SUPPORTS DOUBLE COMPRESSION:\n");
     exit(EXIT_FAILURE);
 }
 
@@ -333,11 +349,58 @@ void fpzip_imp (int argc, char** argv) {
     grover_search(qubits, env);
 }
 
+void fpc_imp (int argc, char** argv) {
+    uint qubits = 0;
+    size_t block_size;
+    long predsizem1 = 0;
+
+    if(sizeof(double) != sizeof(qreal)) {
+        fprintf(stderr, "Invalid qreal size, only support double for fpc\n");
+        usage_fpc();
+    }
+
+    /* parse command-line arguments */
+    for (int i = 1; i < argc; i++) {
+        if (argv[i][0] != '-' || argv[i][2]) { usage_fpc(); }
+        switch (argv[i][1]) {
+        case 'b':
+            if (++i == argc || sscanf(argv[i], "%zu", &block_size) != 1) { usage_fpc(); }
+            break;
+        case 'p':
+            if (++i == argc || sscanf(argv[i], "%lu", &predsizem1) != 1) { usage_fpc(); }
+            break;
+        case 'q':
+            if (++i == argc || sscanf(argv[i], "%u", &qubits) != 1) { usage_fpc(); }
+            break;
+        default:
+            usage_fpc();
+            break;
+        }
+    }
+
+    FPCConfig conf = {
+        .block_size = block_size,
+        .predsizem1 = predsizem1,
+    };
+
+    if (!fpcValidateConfig(conf)) {
+        usage_fpc();
+    } else if (qubits == 0) {
+        fprintf(stderr, "Invalid number of qubits\n");
+        usage_fpc();
+    }
+
+    QuESTEnv env = createQuESTEnvWithFPC(conf, block_size);
+
+    grover_search(qubits, env);
+}
+
 void usage() {
     fprintf(stderr, "Usage: grover <command>\n");
     fprintf(stderr, "Command:\n");
     fprintf(stderr, "  zfp : using zfp compression\n");
     fprintf(stderr, "  fpzip : using fpzip compression\n");
+    fprintf(stderr, "  fpzip : using fpc compression (ONLY FOR DOUBLE)\n");
     exit(EXIT_FAILURE);
 }
 

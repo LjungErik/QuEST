@@ -36,6 +36,7 @@
 # include "compression.h"
 # include "zfp-integration.h"
 # include "fpzip-integration.h"
+# include "fpc-integration.h"
 
 // prevent C++ name mangling
 #ifdef __cplusplus
@@ -384,6 +385,7 @@ typedef struct QuESTEnv
     Compression comp;
     ZFPConfig zfp_conf;
     FPZIPConfig fpzip_conf;
+    FPCConfig fpc_conf;
     size_t max_values_per_block;
     bool use_dynamic_allocation;
 } QuESTEnv;
@@ -1901,6 +1903,20 @@ QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool
  * @author Erik Ljung
  */
 QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block);
+
+/** Create the QuEST execution environment with FPC compression.
+ * This should be called only once, and the environment should be freed with destroyQuESTEnv at the end
+ * of the user's code.
+ * @see
+ * - reportQuESTEnv()
+ * - destroyQuESTEnv()
+ * - syncQuESTEnv()
+ *
+ * @ingroup type
+ * @return object representing the execution environment. A single instance is used for each program
+ * @author Erik Ljung
+ */
+QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block);
 
 
 /** Destroy the QuEST environment. 

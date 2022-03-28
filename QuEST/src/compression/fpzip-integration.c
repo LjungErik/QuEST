@@ -95,6 +95,7 @@ void fpzipCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bl
     }
 
     out_block->size = fpzsize;
+    out_block->n_values = in_block->n_values;
 
     fpzip_write_close(fpz);
 }
@@ -117,5 +118,6 @@ void fpzipDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_
         memset(out_block->data, 0, out_block->size);
     }
 
+    out_block->size = in_block->n_values * sizeof(*(out_block->data));
     out_block->n_values = in_block->n_values;
 }

@@ -141,6 +141,7 @@ void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
     }
 
     out_block->size = zfpsize;
+    out_block->n_values = in_block->n_values;
 
     zfp_field_free(field);  
     zfp_stream_close(zfp);
@@ -178,5 +179,6 @@ void zfpDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_bl
         memset(out_block->data, 0, out_block->size);
     }
     
+    out_block->size = in_block->n_values * sizeof(*(out_block->data));
     out_block->n_values = in_block->n_values;
 }

@@ -226,6 +226,27 @@ QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block) 
     return env;
 }
 
+QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block) {
+    // init MPI environment
+    
+    printf("Maximum values per block: %li\n", max_values_per_block);
+
+
+    QuESTEnv env;
+    env.rank=0;
+    env.numRanks=1;
+    
+    env.seeds = NULL;
+    env.numSeeds = 0;
+    env.comp =  FPC_COMPRESSION;
+    env.fpc_conf = conf;
+    env.max_values_per_block = max_values_per_block;
+    env.use_dynamic_allocation = true;
+    seedQuESTDefault(&env);
+    
+    return env;
+}
+
 void syncQuESTEnv(QuESTEnv env){
     // MPI Barrier goes here in MPI version. 
 } 
