@@ -70,6 +70,7 @@ void fpcCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
     };
 
     fpcsize = fpc_compress(fpc_conf->predsizem1, &in_mem, &out_mem);
+    printf("[%p] - Compressed fpcsize: %li, buffer_size: %li\n", in_block->data, fpcsize, buffer_size);
 
     /* Handling Dynamic Allocation */
     if (buffer != out_block->data) {
@@ -92,6 +93,8 @@ void fpcCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
 void fpcDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_block) {
     /* write the code to decompress the data blocks */
 
+    printf("[%p] - Decompressing, input block size: %li\n", out_block->data, in_block->size);
+
     if (in_block->data != NULL) {
         FPC_MEM out_mem = {
             .ptr = out_block->data,
@@ -105,11 +108,14 @@ void fpcDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_bl
             .length = in_block->size
         };
 
+        printf("Decompressed size: %li, Out size: %li\n", in_block->size, out_block->size);
+
         fpc_decompress(&in_mem, &out_mem);
     } else {
         memset(out_block->data, 0, out_block->size);
     }
 
     out_block->size = in_block->n_values * sizeof(*(out_block->data));
+    //printf("out_block->size: %li\n", out_block->size);
     out_block->n_values = in_block->n_values;
 }

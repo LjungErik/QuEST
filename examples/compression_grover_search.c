@@ -116,9 +116,12 @@ void grover_search(int numQubits, QuESTEnv env) {
         applyDiffuser(qureg, numQubits);
         
         // monitor the probability of the solution state
-        printf("[%i] prob of solution |%d> = %g\n", 
-           r, solElem, getProbAmp(qureg, solElem));
+        printf("[%i] prob of solution |%d> = %g\n", r, solElem, getProbAmp(qureg, solElem));
     }
+
+    // Collect each qubits measure and dump to file
+    //int outcome = measure(qureg, 0);
+    //printf("Qubit 0 state: %i\n", outcome);
 
     // free memory 
     destroyQureg(qureg, env);
@@ -390,6 +393,11 @@ void fpc_imp (int argc, char** argv) {
         usage_fpc();
     }
 
+    if (sizeof(double) != sizeof(qreal)) {
+        fprintf(stderr, "Invalid precision, qreal != double. FPC only supports double");
+        usage_fpc();
+    }
+
     QuESTEnv env = createQuESTEnvWithFPC(conf, block_size);
 
     grover_search(qubits, env);
@@ -400,7 +408,7 @@ void usage() {
     fprintf(stderr, "Command:\n");
     fprintf(stderr, "  zfp : using zfp compression\n");
     fprintf(stderr, "  fpzip : using fpzip compression\n");
-    fprintf(stderr, "  fpzip : using fpc compression (ONLY FOR DOUBLE)\n");
+    fprintf(stderr, "  fpc : using fpc compression (ONLY FOR DOUBLE)\n");
     exit(EXIT_FAILURE);
 }
 
@@ -416,6 +424,8 @@ int main(int argc, char** argv)
         zfp_imp(argc-1, ++argv);
     } else if (!strncmp(argv[1], "fpzip", 6)) {
         fpzip_imp(argc-1, ++argv);
+    } else if (!strncmp(argv[1], "fpc", 4)) {
+        fpc_imp(argc-1, ++argv);
     } else {
         fprintf(stderr, "Invalid command");
         usage();

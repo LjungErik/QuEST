@@ -97,6 +97,7 @@ void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
     }
 
     size_t index = block->mem_block_index;
+    //printf("Compress block: %li\n", index);
     compression_compress(&mem->imp, &mem->blocks[index], block);
 
     block->used = false;
@@ -112,6 +113,7 @@ void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
 
     //printf("Trying to decompressMemory\n");
 
+    //printf("Decompress block: %li\n", index);
     compression_decompress(&mem->imp, &mem->blocks[index], block);
 
     //printf("decompressMemory DONE\n");

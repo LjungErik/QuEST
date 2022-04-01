@@ -21,6 +21,7 @@
 # include "QuEST_extended.h"
 # include "zfp.h"
 # include "fpzip.h"
+# include "fpc.h"
 
 # include <math.h>  
 # include <stdio.h>
@@ -1312,8 +1313,10 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
             qureg->compImp = zfpCreate(env.zfp_conf);
         } else if (env.comp == FPZIP_COMPRESSION) {
             qureg->compImp = fpzipCreate(env.fpzip_conf);
+        } else if (env.comp == FPC_COMPRESSION) {
+            qureg->compImp = fpcCreate(env.fpc_conf);
         } else {
-            fprintf(stderr, "Unknown compression type not supported: %i", env.comp);
+            fprintf(stderr, "Unknown compression type not supported: %i\n", env.comp);
             exit(1);
         }
 
@@ -1499,6 +1502,8 @@ void statevec_reportStateToScreen(Qureg qureg, QuESTEnv env, int reportRank){
 
 void statevec_initBlankState (Qureg qureg)
 {
+    printf("Running initBlankState\n");
+
     long long int stateVecSize;
     long long int index;
 
@@ -1518,7 +1523,6 @@ void statevec_initZeroState (Qureg qureg)
 
     statevec_initBlankState(qureg);
 
-    printf("Running initBlankState\n");
     if (qureg.chunkId==0){
         // zero state |0000..0000> has probability 1
         setQuregRealValue(&qureg, 0, 1.0);
@@ -1528,6 +1532,8 @@ void statevec_initZeroState (Qureg qureg)
 
 void statevec_initPlusState (Qureg qureg)
 {
+    printf("Running initPlusState\n");
+
     long long int chunkSize, stateVecSize;
     long long int index;
 
