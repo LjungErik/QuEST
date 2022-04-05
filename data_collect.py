@@ -1,5 +1,9 @@
 import os
 import time
+import resource
+import subprocess
+from matplotlib.pyplot import get
+from numpy import block
 import re
 
 
@@ -13,7 +17,11 @@ def compile_Quest(alg):
         os.system(compileQuest)
 
     def QuestModifiedGrover():
-        compileZfpQuest = "cd ~/QuEST/build && rm -rf * && cmake .. &&  make"
+        compileZfpQuest = 'cd ~/QuEST/build && rm -rf * && cmake .. -DUSER_SOURCE="examples/compression_grover_search" && make'
+        os.system(compileZfpQuest)
+
+    def QuestModifiedBernstein():
+        compileZfpQuest = 'cd ~/QuEST/build && rm -rf * && cmake .. -DUSER_SOURCE="examples/compression_bernstein_vazirani_circuit" && make'
         os.system(compileZfpQuest)
 
     if alg == "Grover":
@@ -21,44 +29,57 @@ def compile_Quest(alg):
         QuestModifiedGrover()
     elif alg == "Bernstein":
         QuestMasterBernstein()
+        QuestModifiedBernstein()
 
 
 # -------------------------------------------------------------------------------------------------
 
-
 # Execute QuEST and return execution time
-def exeQuestTime(argunemt: str) -> str:
+def exeQuestTime(argunemt, numOfQbits, blockSize):
     switcher = {
-        "OriginalGrover": f"~/QuEST-master/build/demo -q {numOfQbuts} >> out_file.txt 2>&1",
-        "ZfpQuestGrover": f"~/QuEST/build/grover zfp -q {numOfQbuts} -1 1024 -r 16 >> out_file.txt 2>&1",
-        "ZfpQuestDynamicGrover": f"~/QuEST/build/grover zfp -q {numOfQbuts} -1 {blockSize} -r 16 -d >> out_file.txt 2>&1",
+        "Original": ["/home/darko/QuEST-master/build/demo", "-q", f"{numOfQbits}"],
+        "ZfpQuest": [
+            "/home/darko/QuEST/build/demo",
+            "zfp",
+            "-q",
+            f"{numOfQbits}",
+            "-1",
+            f"{blockSize}",
+            "-r",
+            "16",
+        ],
+        "ZfpQuestDynamic": [
+            "/home/darko/QuEST/build/demo",
+            "zfp",
+            "-q",
+            f"{numOfQbits}",
+            "-1",
+            f"{blockSize}",
+            "-r",
+            "16",
+            "-d",
+        ],
+        "FpZipQuest": ["/home/darko/QuEST/build/demo", "fpzip", "-q", f"{numOfQbits}"],
     }
-
+    outFile = open("out_file.txt", "a")
     start = time.perf_counter_ns()
-    os.system(switcher.get(argunemt))
+    proc = subprocess.Popen(
+        switcher.get(argunemt),
+        stdout=outFile,
+        stderr=subprocess.DEVNULL,
+    )
+    proc.wait()
     end = time.perf_counter_ns()
+    # exeMem = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
     exeTime = end - start
+    outFile.close()
     return exeTime
 
 
-# ---------------------------------------------------------------------------------------------------------------
-# Run QuEST with Valgrind for memory check
-def exeQuestMemory(argument: str) -> str:
-    switcher = {
-        "OriginalGrover": f"valgrind --tool=memcheck ~/QuEST-master/build/demo -q {numOfQbuts} >> out_file.txt 2>&1",
-        "ZfpQuestGrover": f"valgrind --tool=memcheck ~/QuEST/build/grover zfp -q {numOfQbuts} -1 {blockSize} -r 16 >> out_file.txt 2>&1",
-        "ZfpQuestDynamicGrover": f"valgrind --tool=memcheck ~/QuEST/build/grover zfp -q {numOfQbuts} -1 {blockSize} -r 16 -d >> out_file.txt",
-    }
-    os.system(switcher.get(argument))
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-
-
-def writeExeTime(fun):
+def writeExeTime(fun, testNum, numOfQbits, blockSize):
     outFile = open("out_file.txt", "a")
     timeResultsFile = open("time_results.txt", "a")
-    time_ns = exeQuestTime(fun)
+    time_ns = exeQuestTime(fun, numOfQbits, blockSize)
     time_s = time_ns / 10**9
     seg_flag = 0
     n_flag = 0
@@ -68,103 +89,217 @@ def writeExeTime(fun):
             seg_flag = 1
         if "n_blocks: 1," in line:
             n_flag = 1
+    if blockSize >= 32768:
+        n_flag = 1
     if seg_flag == 0:
         timeResultsFile.write(
-            f"Time test Quest {fun} runing {numOfQbuts} Qubits and {blockSize} Block Size is {time_s} sec\n"
+            f"Time test {testNum} Quest {fun} runing {numOfQbits} Qubits and {blockSize} Block Size is {time_s} sec\n"
         )
-    if seg_flag == 1:
-        timeResultsFile.write(f"{fun} {numOfQbuts} {blockSize} FAILED \n")
     outFile.truncate(0)
     outFile.close()
     timeResultsFile.close()
     return n_flag
 
 
-def groverTimeResults():
-    global numOfQbuts
-    global blockSize
-    global groverMaxQubit
-    global Qbit_flag
-    global block_flag
-    while Qbit_flag == 0:
-        writeExeTime("OriginalGrover")
-        while block_flag == 0:
-            block_flag = writeExeTime("ZfpQuestGrover")
-            block_flag = writeExeTime("ZfpQuestDynamicGrover")
-            blockSize *= 2
+# """
+def GroverTimeExe(numOfQbits, blockSize, groverMaxQubit, numOfTests):
+    start_block_size = blockSize
+    # Define Flags
+    Qbit_flag = 0
+    block_flag = 0
+    compile_Quest("Grover")
+    # Grover Test -----------------------------------------------------------------------------------------------------
+    for test in range(numOfTests):
+        Qbit_flag = 0
+        while Qbit_flag == 0:
+            writeExeTime("Original", test, numOfQbits, blockSize)
+            writeExeTime("FpZipQuest", test, numOfQbits, blockSize)
+            while block_flag == 0:
+                block_flag = writeExeTime("ZfpQuest", test, numOfQbits, blockSize)
+                block_flag = writeExeTime(
+                    "ZfpQuestDynamic", test, numOfQbits, blockSize
+                )
+                blockSize *= 2
 
-        block_flag = 0
-        blockSize = 128
+            block_flag = 0
+            blockSize = start_block_size
 
-        if numOfQbuts >= groverMaxQubit:
-            Qbit_flag = 1
-        numOfQbuts += 1
+            if numOfQbits >= groverMaxQubit:
+                Qbit_flag = 1
+            numOfQbits += 1
+    # --------------------------------------------------------------------------------------------------------------
 
 
-def writeExeMem(fun):
+def exeQuestMem(argunemt, numOfQbits, blockSize, exitTime):
+    switcher = {
+        "Original": [
+            "/usr/bin/time",
+            "-v",
+            "timeout",
+            f"{exitTime}",
+            "/home/darko/QuEST-master/build/demo",
+            "-q",
+            f"{numOfQbits}",
+        ],
+        "ZfpQuest": [
+            "/usr/bin/time",
+            "-v",
+            "timeout",
+            f"{exitTime}",
+            "/home/darko/QuEST/build/demo",
+            "zfp",
+            "-q",
+            f"{numOfQbits}",
+            "-1",
+            f"{blockSize}",
+            "-r",
+            "16",
+        ],
+        "ZfpQuestDynamic": [
+            "/usr/bin/time",
+            "-v",
+            "timeout",
+            f"{exitTime}",
+            "/home/darko/QuEST/build/demo",
+            "zfp",
+            "-q",
+            f"{numOfQbits}",
+            "-1",
+            f"{blockSize}",
+            "-r",
+            "16",
+            "-d",
+        ],
+        "FpZipQuest": [
+            "/usr/bin/time",
+            "-v",
+            "timeout",
+            f"{exitTime}",
+            "/home/darko/QuEST/build/demo",
+            "fpzip",
+            "-q",
+            f"{numOfQbits}",
+        ],
+    }
+    outFile = open("out_file.txt", "a")
+    proc = subprocess.Popen(
+        switcher.get(argunemt),
+        shell=False,
+        stdout=outFile,
+        stderr=outFile,
+    )
+    proc.wait()
+    outFile.close()
+    # Read output
+    outFile = open("out_file.txt", "r")
+    for line in outFile:
+        if "Maximum resident set size" in line:
+            m = re.search("(?<=kbytes)(.*)", line)
+            num = str(m.group())
+            num = num.replace("): ", "", 1)
+    exeMem = int(num)
+    return exeMem
+
+
+def writeExeMem(fun, testNum, numOfQbits, blockSize, exitTime):
     outFile = open("out_file.txt", "a")
     memResultsFile = open("mem_results.txt", "a")
-    exeQuestMemory(fun)
+    get_mem = exeQuestMem(fun, numOfQbits, blockSize, exitTime)
     seg_flag = 0
     n_flag = 0
     for line in open("out_file.txt", "r"):
-        # print(line)
-        if "total heap usage:" in line:
-            search_tot_mem_used = re.search("(?<=frees, )(.*)", line)
-            tot_mem_used = str(search_tot_mem_used.groups())
-            tot_mem_used = tot_mem_used.replace("('", "", 1)
-            tot_mem_used = tot_mem_used.replace(" bytes allocated',)", "", 1)
-            print(tot_mem_used)
         if "Segmentation" in line:
             seg_flag = 1
         if "n_blocks: 1," in line:
-            print(numOfQbuts, "Qbuts ", blockSize, "Block Size", "+", line)
             n_flag = 1
+    if blockSize >= 32768:
+        n_flag = 1
     if seg_flag == 0:
         memResultsFile.write(
-            f"Memory test Quest {fun} runing {numOfQbuts} Qubits and {blockSize} Block Size is {tot_mem_used} bytes\n"
+            f"Memory test {testNum} of Quest {fun} runing {numOfQbits} Qubits and {blockSize} Block Size is {get_mem} kb\n"
         )
-    if seg_flag == 1:
-        memResultsFile.write(f"{fun} {numOfQbuts} {blockSize} FAILED \n")
-    # outFile.truncate(0)
-    memResultsFile.close()
+    outFile.truncate(0)
     outFile.close()
+    memResultsFile.close()
     return n_flag
 
 
-def groverMemResults():
-    global numOfQbuts
-    global blockSize
-    global groverMaxQubit
-    global Qbit_flag
-    global block_flag
-    while Qbit_flag == 0:
-        writeExeTime("OriginalGrover")
-        while block_flag == 0:
-            block_flag = writeExeTime("ZfpQuestGrover")
-            block_flag = writeExeTime("ZfpQuestDynamicGrover")
-            blockSize *= 2
+def GroverMemExe(numOfQbits, blockSize, groverMaxQubit, numOfTests, exitTime):
+    start_block_size = blockSize
+    # Define Flags
+    Qbit_flag = 0
+    block_flag = 0
+    compile_Quest("Grover")
+    # Grover Test -----------------------------------------------------------------------------------------------------
+    for test in range(numOfTests):
+        Qbit_flag = 0
+        while Qbit_flag == 0:
+            writeExeMem("Original", test, numOfQbits, blockSize, exitTime)
+            writeExeMem("FpZipQuest", test, numOfQbits, blockSize, exitTime)
+            while block_flag == 0:
+                block_flag = writeExeMem(
+                    "ZfpQuest", test, numOfQbits, blockSize, exitTime
+                )
+                block_flag = writeExeMem(
+                    "ZfpQuestDynamic", test, numOfQbits, blockSize, exitTime
+                )
+                blockSize *= 2
 
-        block_flag = 0
-        blockSize = 128
+            block_flag = 0
+            blockSize = start_block_size
 
-        if numOfQbuts >= groverMaxQubit:
-            Qbit_flag = 1
-        numOfQbuts += 1
-
-
-# ---------------------------------------------------------------------------------------------------
-
-# compile_Quest("Grover")
+            if numOfQbits >= groverMaxQubit:
+                Qbit_flag = 1
+            numOfQbits += 1
 
 
-# Specify Inputs
-numOfQbuts = 5
-blockSize = 128
-groverMaxQubit = 15
-# Define Flags
-Qbit_flag = 0
-block_flag = 0
-# -----------------------------------
-groverTimeResults()
-groverMemResults()
+# """
+
+# """
+def findMaxQbit(fun, numOfQbits, blockSize):
+    # Find Max Qubits --------------------------------------------------------------------------------------------
+    compile_Quest("Bernstein")
+    maxQbitTime = open("max_Qbit_time.txt", "a")
+    done_flag = 0
+    block_falg = 0
+    while done_flag == 0:
+        time_ns = exeQuestTime(fun, numOfQbits, blockSize)
+        time_s = time_ns / 10**9
+        for line in open("out_file.txt", "r"):
+            if "Killed" in line:
+                done_flag = 1
+                print(f"Maximum num of Qbits for {fun} is {numOfQbits}")
+            if "n_blocks: 1," in line:
+                block_falg = 1
+        maxQbitTime.write(
+            f"Success {fun} with {numOfQbits} Qbits, {blockSize} Block Size and time {time_s} sec\n"
+        )
+        numOfQbits += 1
+    maxQbitTime.clsoe()
+    outFile = open("out_file.txt", "a")
+    outFile.truncate(0)
+    outFile.close()
+    return block_falg
+
+
+def vaziraniMaxQbit(startQbit, startBlockSize):
+    findMaxQbit("Original", startQbit, startBlockSize)
+    findMaxQbit("FpZipQuest", startQbit, startBlockSize)
+    blockSize = startBlockSize
+    block_flag = 0
+    while block_flag == 0:
+        block_flag = findMaxQbit("ZfpQuest", startQbit, blockSize)
+        block_flag = findMaxQbit("ZfpQuestDynamic", startQbit, blockSize)
+        if blockSize >= 32768:
+            block_flag = 1
+
+
+# -------------------------------------------------------------------------------------------------------------------
+# """
+
+
+# GroverTimeExe(numOfQbits=9, blockSize=1024, groverMaxQubit=10, numOfTests=1)
+GroverMemExe(
+    numOfQbits=25, blockSize=1024, groverMaxQubit=25, numOfTests=1, exitTime=10
+)
+# vaziraniMaxQbit(startQbit=10, startBlockSize=1024)
