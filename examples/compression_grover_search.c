@@ -120,11 +120,14 @@ void grover_search(int numQubits, QuESTEnv env) {
         printf("[%i] prob of solution |%d> = %g\n", r, solElem, getProbAmp(qureg, solElem));
     }
 
-    // Collect each qubits measure and dump to file
-    //int outcome = measure(qureg, 0);
-    //printf("Qubit 0 state: %i\n", outcome);
-
     dumpQuregStateToFile(&qureg, "grover-search_dump.data");
+
+    // Collect each qubits measure and dump to file
+    for (int i = 0; i < numQubits; i++) {
+        int outcome = measure(qureg, i);
+        printf("Qubit %i state: %i\n", i, outcome);
+    }
+    
 
     // free memory 
     destroyQureg(qureg, env);

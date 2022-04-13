@@ -3759,45 +3759,38 @@ void statevec_collapseToKnownProbOutcomeLocal(Qureg qureg, int measureQubit, int
     sizeBlock     = 2LL * sizeHalfBlock;                         // size of blocks (pairs of measure and skip entries)
 
     renorm=1/sqrt(totalProbability);
-    qreal *stateVecReal = qureg.stateVec.real;
-    qreal *stateVecImag = qureg.stateVec.imag;
+    qreal stateVecReal;
+    qreal stateVecImag;
 
+    if (outcome==0){
+        // measure qubit is 0
+        for (thisTask=0; thisTask<numTasks; thisTask++) {
+            thisBlock = thisTask / sizeHalfBlock;
+            index     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
 
-# ifdef _OPENMP
-# pragma omp parallel \
-    default (none) \
-    shared    (numTasks,sizeBlock,sizeHalfBlock, stateVecReal,stateVecImag,renorm,outcome) \
-    private   (thisTask,thisBlock,index)
-# endif
-    {
-        if (outcome==0){
-            // measure qubit is 0
-# ifdef _OPENMP
-# pragma omp for schedule  (static)
-# endif
-            for (thisTask=0; thisTask<numTasks; thisTask++) {
-                thisBlock = thisTask / sizeHalfBlock;
-                index     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
-                stateVecReal[index]=stateVecReal[index]*renorm;
-                stateVecImag[index]=stateVecImag[index]*renorm;
+            stateVecReal = getQuregRealValue(&qureg, index);
+            stateVecImag = getQuregImagValue(&qureg, index);
 
-                stateVecReal[index+sizeHalfBlock]=0;
-                stateVecImag[index+sizeHalfBlock]=0;
-            }
-        } else {
-            // measure qubit is 1
-# ifdef _OPENMP
-# pragma omp for schedule  (static)
-# endif
-            for (thisTask=0; thisTask<numTasks; thisTask++) {
-                thisBlock = thisTask / sizeHalfBlock;
-                index     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
-                stateVecReal[index]=0;
-                stateVecImag[index]=0;
+            setQuregRealValue(&qureg, index, stateVecReal*renorm);
+            setQuregImagValue(&qureg, index, stateVecImag*renorm);
 
-                stateVecReal[index+sizeHalfBlock]=stateVecReal[index+sizeHalfBlock]*renorm;
-                stateVecImag[index+sizeHalfBlock]=stateVecImag[index+sizeHalfBlock]*renorm;
-            }
+            setQuregRealValue(&qureg, index+sizeHalfBlock, 0.0);
+            setQuregImagValue(&qureg, index+sizeHalfBlock, 0.0);
+        }
+    } else {
+        // measure qubit is 1
+        for (thisTask=0; thisTask<numTasks; thisTask++) {
+            thisBlock = thisTask / sizeHalfBlock;
+            index     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
+
+            setQuregRealValue(&qureg, index, 0.0);
+            setQuregImagValue(&qureg, index, 0.0);
+
+            stateVecReal = getQuregRealValue(&qureg, index+sizeHalfBlock);
+            stateVecImag = getQuregImagValue(&qureg, index+sizeHalfBlock);
+
+            setQuregRealValue(&qureg, index+sizeHalfBlock, stateVecReal*renorm);
+            setQuregImagValue(&qureg, index+sizeHalfBlock, stateVecImag*renorm);
         }
     }
 
