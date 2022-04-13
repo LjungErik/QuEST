@@ -68,8 +68,13 @@ void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
 qreal compressedMemory_get_value(CompressedMemory *mem, RawDataBlock *block, long long int index);
 void compressedMemory_set_value(CompressedMemory *mem, RawDataBlock *block, long long int index, qreal value);
 
+void compressedMemory_dump_memory_to_file(CompressedMemory *mem, RawDataBlock *block, FILE *stream);
+
 RawDataBlock* rawDataBlock_allocate(CompressionConfig conf);
 void rawDataBlock_destroy(RawDataBlock* block);
+
+void rawDataBlock_dump_to_file(RawDataBlock *block, FILE *stream);
+
 bool rawDataBlock_is_current_block(RawDataBlock* block, long long int block_idx);
 
 #endif

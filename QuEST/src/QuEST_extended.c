@@ -32,3 +32,10 @@ void setQuregImagValue(Qureg *qureg, long long int index, qreal value) {
         qureg->stateVec.imag[index] = value;
     }
 }
+
+void dumpQuregStateToFile(Qureg *qureg, char *filename) {
+    FILE *out_file = fopen(filename, "w");
+
+    compressedMemory_dump_memory_to_file(qureg->real_mem, qureg->real_block, out_file);
+    compressedMemory_dump_memory_to_file(qureg->imag_mem, qureg->imag_block, out_file);
+}

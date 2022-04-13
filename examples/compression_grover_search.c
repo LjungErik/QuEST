@@ -23,6 +23,7 @@ make
 #include <stdlib.h>
 
 # include "QuEST.h"
+# include "QuEST_extended.h"
 # include "QuEST_precision.h"
 # include "zfp-integration.h"
 # include "zfp.h"
@@ -122,6 +123,8 @@ void grover_search(int numQubits, QuESTEnv env) {
     // Collect each qubits measure and dump to file
     //int outcome = measure(qureg, 0);
     //printf("Qubit 0 state: %i\n", outcome);
+
+    dumpQuregStateToFile(&qureg, "grover-search_dump.data");
 
     // free memory 
     destroyQureg(qureg, env);

@@ -174,6 +174,20 @@ void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long
     rawDataBlock_set_value(block, internal_idx, value);
 }
 
+void compressedMemory_dump_memory_to_file(CompressedMemory *mem, RawDataBlock *block, FILE *stream) {
+    /* if in use, save current state */
+    if (block->used) {
+        // Compress the existing block and save to memory
+        compressedMemory_save(mem, block);
+    }
+
+    for(size_t i = 0; i < mem->n_blocks; i++) {
+        block->used = false;
+        compressedMemory_load(mem, i, block);
+        rawDataBlock_dump_to_file(block, stream);
+    }
+}
+
 RawDataBlock* rawDataBlock_allocate(CompressionConfig conf) {
     RawDataBlock* block = calloc(1, sizeof(RawDataBlock));
     size_t data_size = (size_t) (conf.values_per_block * sizeof(*(block->data)));
@@ -205,4 +219,14 @@ void rawDataBlock_destroy(RawDataBlock* block) {
 
     free(block->data);
     free(block);
+}
+
+void rawDataBlock_dump_to_file(RawDataBlock *block, FILE *stream) {
+    if (!block->used) {
+        printf("Missing data, raw data block does not contain any data\n");
+        return;
+    }
+
+    /* Fire and forget */
+    fwrite(block->data, sizeof(*(block->data)), block->n_values, stream);
 }
