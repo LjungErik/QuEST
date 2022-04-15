@@ -51,7 +51,8 @@ void compression_decompress(CompressionImp *imp, CompressedBlock *in_block, RawD
 }
 
 CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
-    CompressedMemory *mem = calloc(1, sizeof(CompressedMemory));
+    CompressedMemory *mem = NULL;
+    cudaMalloc(&mem, sizeof(CompressedMemory));
 
     mem->imp = conf.imp;
     mem->n_blocks = conf.n_blocks;
@@ -64,7 +65,7 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
     printf("Creating %li blocks for memory, Max block size %li, total Max size: %lli\n", 
                 mem->n_blocks, max_n, (long long int) (mem->n_blocks * max_n));
 
-    mem->blocks = calloc(mem->n_blocks, sizeof(CompressedBlock));
+    cudaMalloc(&mem->blocks, (mem->n_blocks * sizeof(CompressedBlock)));
     for (int i = 0; i < mem->n_blocks; i++) {
         mem->blocks[i].n_values = mem->values_per_block;
         mem->blocks[i].max_size = max_n;
@@ -73,7 +74,7 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
         if (conf.use_dynamic_allocation) {
             mem->blocks[i].data = NULL;
         } else {
-            mem->blocks[i].data = calloc(max_n, sizeof(char));
+            cudaMalloc(&(mem->blocks[i].data), max_n*sizeof(char));
         }
     }
 
@@ -83,11 +84,11 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
 void compressedMemory_destroy(CompressedMemory *mem) {
     for (int i = 0; i < mem->n_blocks; i++) {
         if (mem->blocks[i].data != NULL) {
-            free(mem->blocks[i].data);
+            cudaFree(mem->blocks[i].data);
         }
     }
-    free(mem->blocks);
-    free(mem);
+    cudaFree(mem->blocks);
+    cudaFree(mem);
 }
 
 void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
@@ -107,22 +108,16 @@ void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
 
 void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block) {
     if (block->used) {
-        compressedMemory_save(mem, block);
+        compression_compress(&mem->imp, &mem->blocks[index], block);
     }
 
-    //printf("Trying to decompressMemory\n");
-
-    //printf("Decompress block: %li\n", index);
     compression_decompress(&mem->imp, &mem->blocks[index], block);
-
-    //printf("decompressMemory DONE\n");
 
     block->mem_block_index = index;
     block->used = true;
 }
 
-qreal compressedMemory_get_value(CompressedMemory* mem, RawDataBlock* block, long long int index) {
-    // Calculate which block index should be in (index -> block index)
+qreal compressedMemory_get_value(CompressedMemory *mem, RawDataBlock *block, long long int index) {
     long long int block_idx = (index / mem->values_per_block);
 
     if (block_idx >= mem->n_blocks) {
@@ -143,8 +138,7 @@ qreal compressedMemory_get_value(CompressedMemory* mem, RawDataBlock* block, lon
     return rawDataBlock_get_value(block, internal_idx);
 }
 
-void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long long int index, qreal value) {
-    // Calculate which block index should be in (index -> block index)
+void compressedMemory_set_value(CompressedMemory *mem, RawDataBlock *block, long long int index, qreal value) {
     long long int block_idx = (index / mem->values_per_block);
 
     if (block_idx >= mem->n_blocks) {
@@ -165,6 +159,50 @@ void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long
     rawDataBlock_set_value(block, internal_idx, value);
 }
 
+RawDataBlock* rawDataBlock_allocate(CompressionConfig conf) {
+    RawDataBlock* block = NULL;
+    cudaMalloc(&block, sizeof(RawDataBlock));
+    size_t data_size = (size_t) (conf.values_per_block * sizeof(*(block->data)));
+
+    printf("Allocating Raw Data block with data size: %li\n", data_size);
+
+    if (conf.use_dynamic_allocation) {
+        size_t max_n = compression_maxSize(&conf.imp);
+        cudaMalloc(&(block->tmp_storage), (max_n * sizeof(char)));
+        block->tmp_max_size = max_n;
+    } else {
+        block->tmp_storage = NULL;
+        block->tmp_max_size = 0;
+    }
+
+    cudaMalloc(&(block->data), data_size);
+    block->size = data_size;
+    block->n_values = 0;
+    block->mem_block_index = 0;
+    block->used = false;
+
+    return block;
+}
+
+void rawDataBlock_destroy(RawDataBlock* block) {
+    if (block->tmp_storage != NULL) {
+        cudaFree(block->tmp_storage);
+    }
+
+    cudaFree(block->data);
+    cudaFree(block);
+}
+
+void rawDataBlock_dump_to_file(RawDataBlock *block, FILE *stream) {
+    if (!block->used) {
+        printf("Missing data, raw data block does not contain any data\n");
+        return;
+    }
+
+    /* Fire and forget */
+    fwrite(block->data, sizeof(*(block->data)), block->n_values, stream);
+}
+
 void compressedMemory_dump_memory_to_file(CompressedMemory *mem, RawDataBlock *block, FILE *stream) {
     /* if in use, save current state */
     if (block->used) {
@@ -177,47 +215,4 @@ void compressedMemory_dump_memory_to_file(CompressedMemory *mem, RawDataBlock *b
         compressedMemory_load(mem, i, block);
         rawDataBlock_dump_to_file(block, stream);
     }
-}
-
-RawDataBlock* rawDataBlock_allocate(CompressionConfig conf) {
-    RawDataBlock* block = calloc(1, sizeof(RawDataBlock));
-    size_t data_size = (size_t) (conf.values_per_block * sizeof(*(block->data)));
-
-    printf("Allocating Raw Data block with data size: %li\n", data_size);
-
-    if (conf.use_dynamic_allocation) {
-        size_t max_n = compression_maxSize(&conf.imp);
-        block->tmp_storage = calloc(max_n, sizeof(char));
-        block->tmp_max_size = max_n;
-    } else {
-        block->tmp_storage = NULL;
-        block->tmp_max_size = 0;
-    }
-
-    block->data = malloc(data_size);
-    block->size = data_size;
-    block->n_values = 0;
-    block->mem_block_index = 0;
-    block->used = false;
-
-    return block;
-}
-
-void rawDataBlock_destroy(RawDataBlock* block) {
-    if (block->tmp_storage != NULL) {
-        free(block->tmp_storage);
-    }
-
-    free(block->data);
-    free(block);
-}
-
-void rawDataBlock_dump_to_file(RawDataBlock *block, FILE *stream) {
-    if (!block->used) {
-        printf("Missing data, raw data block does not contain any data\n");
-        return;
-    }
-
-    /* Fire and forget */
-    fwrite(block->data, sizeof(*(block->data)), block->n_values, stream);
 }

@@ -2625,9 +2625,11 @@ void statevec_pauliXLocal(Qureg qureg, int targetQubit)
 
     // Handle compress and decompress on regular intervals
     for (thisTask=0; thisTask<numTasks; thisTask++) {
-        thisBlock   = thisTask / sizeHalfBlock;
-        indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
-        indexLo     = indexUp + sizeHalfBlock;
+        thisBlock   = thisTask / sizeHalfBlock; // 0, 1, 2, 3, 4, 5, 6, 7, ...
+                                                // 0, 0, 1, 1, 2, 2, 3, 3
+        indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock; // 0, 2, 4, 6, 8
+                                                // 0, 1, 
+        indexLo     = indexUp + sizeHalfBlock; // 1, 5, 7, 9
 
         stateRealUp = getQuregRealValue(&qureg, indexUp);
         stateImagUp = getQuregImagValue(&qureg, indexUp);

@@ -56,13 +56,8 @@ typedef struct CompressionConfig {
     bool use_dynamic_allocation;
 } CompressionConfig;
 
-size_t compression_maxSize(CompressionImp *imp);
-void compression_compress(CompressionImp *imp,  CompressedBlock *out_block, RawDataBlock *in_block);
-void compression_decompress(CompressionImp *imp, CompressedBlock *in_block, RawDataBlock *out_block);
-
 CompressedMemory* compressedMemory_allocate(CompressionConfig conf);
 void compressedMemory_destroy(CompressedMemory *mem);
-void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block); // Compressing
 void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block); // Decompressing
 
 qreal compressedMemory_get_value(CompressedMemory *mem, RawDataBlock *block, long long int index);
