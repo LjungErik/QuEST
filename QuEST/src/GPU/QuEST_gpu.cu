@@ -748,7 +748,6 @@ void statevec_initPlusState(Qureg qureg)
     int threadsPerCUDABlock, CUDABlocks;
     threadsPerCUDABlock = 128;
     qreal normFactor = 1.0/sqrt((qreal)qureg.numAmpsPerChunk);
-    CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk)/threadsPerCUDABlock);
     
     if (qureg.comp != NO_COMPRESSION) {
         for(size_t i = 0; i < qureg.real_mem->n_blocks; i++) {
@@ -1470,7 +1469,7 @@ __global__ void statevec_pauliXKernel(Qureg qureg, int targetQubit){
     stateVecImag[indexLo] = stateImagUp;
 }
 
-__global__ void statevec_pauliXKernel_Block(Qureg qureg, int targetQubit){
+__global__ void statevec_pauliXKernel_Block(Qureg qureg, int targetQubit, long long int offset, long long int numTasks){
     // ----- sizes
     long long int sizeBlock,                                           // size of blocks
          sizeHalfBlock;                                       // size of blocks halved
@@ -1483,7 +1482,6 @@ __global__ void statevec_pauliXKernel_Block(Qureg qureg, int targetQubit){
            stateImagUp;                             // (used in updates)
     // ----- temp variables
     long long int thisTask;                                   // task based approach for expose loop with small granularity
-    long long int numTasks=qureg.numAmpsPerChunk>>1;
 
     sizeHalfBlock = 1LL << targetQubit;                               // size of blocks halved
     sizeBlock     = 2LL * sizeHalfBlock;                           // size of blocks
@@ -1496,11 +1494,11 @@ __global__ void statevec_pauliXKernel_Block(Qureg qureg, int targetQubit){
     qreal *stateVecReal = qureg.real_block->data;
     qreal *stateVecImag = qureg.imag_block->data;
 
-    thisTask = blockIdx.x*blockDim.x + threadIdx.x;
+    thisTask = blockIdx.x*blockDim.x + threadIdx.x + offset;
     if (thisTask>=numTasks) return;
 
     thisBlock   = thisTask / sizeHalfBlock;
-    indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
+    indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock - offset;
     indexLo     = indexUp + sizeHalfBlock;
 
     // store current state vector values in temp variables
@@ -1516,11 +1514,26 @@ __global__ void statevec_pauliXKernel_Block(Qureg qureg, int targetQubit){
 
 void statevec_pauliX(Qureg qureg, int targetQubit) 
 {
-    //int threadsPerCUDABlock, CUDABlocks;
-    //threadsPerCUDABlock = 128;
-    //CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk>>1)/threadsPerCUDABlock);
-    // TODO
-    //statevec_pauliXKernel<<<CUDABlocks, threadsPerCUDABlock>>>(qureg, targetQubit);
+    int threadsPerCUDABlock, CUDABlocks;
+    threadsPerCUDABlock = 128;
+    
+    if (qureg.comp != NO_COMPRESSION) {
+        long long int numTasks = qureg.numAmpsPerChunk>>1;
+        long long int step = (numTasks / qureg.real_mem->n_blocks);
+        long long int offset;
+        long long int end;
+        for(size_t i = 0; i < qureg.real_mem->n_blocks; i++) {
+            offset = i * step;
+            end = offset + step;
+            compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+            compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+            CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
+            statevec_pauliXKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg, targetQubit, offset, numTasks);
+        }
+    } else {
+        CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk>>1)/threadsPerCUDABlock);
+        statevec_pauliXKernel<<<CUDABlocks, threadsPerCUDABlock>>>(qureg, targetQubit);
+    }
 }
 
 __global__ void statevec_pauliYKernel(Qureg qureg, int targetQubit, int conjFac){
