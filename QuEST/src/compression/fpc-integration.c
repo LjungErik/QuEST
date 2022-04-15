@@ -36,6 +36,7 @@ size_t fpcMaxSize(void *config) {
 }
 
 void fpcCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_block) {
+    
     FPCConfig *fpc_conf = (FPCConfig*)config;
     size_t fpcsize;
     void* buffer;
@@ -69,7 +70,10 @@ void fpcCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
         .length = in_block->size
     };
 
-    fpcsize = fpc_compress(fpc_conf->predsizem1, &in_mem, &out_mem);
+    
+    fpcsize = fpc_compress(fpc_conf->predsizem1, &in_mem, &out_mem);  
+
+
     printf("[%p] - Compressed fpcsize: %li, buffer_size: %li\n", in_block->data, fpcsize, buffer_size);
 
     /* Handling Dynamic Allocation */
@@ -111,6 +115,7 @@ void fpcDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_bl
         printf("Decompressed size: %li, Out size: %li\n", in_block->size, out_block->size);
 
         fpc_decompress(&in_mem, &out_mem);
+        
     } else {
         memset(out_block->data, 0, out_block->size);
     }

@@ -70,7 +70,7 @@ static int memwrite(void *ptr, size_t elementSize, size_t elementCount, FPC_MEM*
     memcpy(stream->ptr + stream->pos, ptr, length);
     stream->pos += length;
 
-    return 1;
+    return length;
 }
 
 static const long long mask[8] =
@@ -85,6 +85,7 @@ static const long long mask[8] =
 
 size_t fpc_compress(long predsizem1, FPC_MEM *input, FPC_MEM *output)
 {
+  
   register long i, out, intot, hash, dhash, code, bcode, ioc;
   register long long val, lastval, stride, pred1, pred2, xor1, xor2;
   register long long *fcm, *dfcm;
@@ -109,9 +110,11 @@ size_t fpc_compress(long predsizem1, FPC_MEM *input, FPC_MEM *output)
   assert(NULL != dfcm);
 
   intot = memread(inbuf, 8, SIZE, input);
+  
   while (0 < intot) {
     val = inbuf[0];
     out = 6 + ((intot + 1) >> 1);
+    
     *((long long *)&outbuf[(out >> 3) << 3]) = 0;
     for (i = 0; i < intot; i += 2) {
       xor1 = val ^ pred1;
@@ -154,6 +157,7 @@ size_t fpc_compress(long predsizem1, FPC_MEM *input, FPC_MEM *output)
       *((long long *)&outbuf[((out >> 3) << 3) + 8]) = (unsigned long long)xor1 >> (64 - ((out & 0x7) << 3));
 
       out += bcode + (bcode >> 2);
+      
       code |= bcode << 4;
 
       xor1 = val ^ pred1;
@@ -208,6 +212,9 @@ size_t fpc_compress(long predsizem1, FPC_MEM *input, FPC_MEM *output)
     outbuf[4] = out >> 8;
     outbuf[5] = out >> 16;
     ioc = memwrite(outbuf, 1, out, output);
+
+    printf("IOC: %li    and    OUT: %li\n", ioc, out);
+
     assert(ioc == out);
     intot = memread(inbuf, 8, SIZE, input);
   }
@@ -318,6 +325,7 @@ void fpc_decompress(FPC_MEM *input, FPC_MEM *output)
         outbuf[i + 1] = val;
       }
       ioc = memwrite(outbuf, 8, intot, output);
+      
       assert(ioc == intot);
       intot = 0;
       if ((end - 6) >= in) {

@@ -43,11 +43,15 @@ size_t compression_maxSize(CompressionImp *imp) {
 }
 
 void compression_compress(CompressionImp *imp,  CompressedBlock *out_block, RawDataBlock *in_block) {
-    imp->compress(imp->config, out_block, in_block);
+    
+    imp->compress(imp->config, out_block, in_block);        // This call causes an error
+    
 }
 
 void compression_decompress(CompressionImp *imp, CompressedBlock *in_block, RawDataBlock *out_block) {
+    
     imp->decompress(imp->config, in_block, out_block);
+    
 }
 
 CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
@@ -95,7 +99,7 @@ void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
         printf("Error, cannot save uncompressed data, block contains no data.\n");
         return;
     }
-
+    
     size_t index = block->mem_block_index;
     //printf("Compress block: %li\n", index);
     compression_compress(&mem->imp, &mem->blocks[index], block);
@@ -114,6 +118,7 @@ void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
     //printf("Trying to decompressMemory\n");
 
     //printf("Decompress block: %li\n", index);
+    
     compression_decompress(&mem->imp, &mem->blocks[index], block);
 
     //printf("decompressMemory DONE\n");
@@ -141,6 +146,7 @@ qreal compressedMemory_get_value(CompressedMemory* mem, RawDataBlock* block, lon
             compressedMemory_save(mem, block);
         }
         // Decompress the specific block
+         
         compressedMemory_load(mem, block_idx, block);
     }  
         
@@ -168,7 +174,9 @@ void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long
             // Compress the existing block and save to memory
             compressedMemory_save(mem, block);
         }
+        
         compressedMemory_load(mem, block_idx, block);
+        
     }  
         
     rawDataBlock_set_value(block, internal_idx, value);
@@ -183,6 +191,7 @@ void compressedMemory_dump_memory_to_file(CompressedMemory *mem, RawDataBlock *b
 
     for(size_t i = 0; i < mem->n_blocks; i++) {
         block->used = false;
+        
         compressedMemory_load(mem, i, block);
         rawDataBlock_dump_to_file(block, stream);
     }

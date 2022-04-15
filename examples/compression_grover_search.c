@@ -358,7 +358,7 @@ void fpzip_imp (int argc, char** argv) {
     grover_search(qubits, env);
 }
 
-void fpc_imp (int argc, char** argv) {
+void fpc_imp(int argc, char** argv) {
     uint qubits = 0;
     size_t block_size;
     long predsizem1 = 0;
