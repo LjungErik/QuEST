@@ -527,6 +527,8 @@ QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool
     env.max_values_per_block = max_values_per_block;
     env.use_dynamic_allocation = use_dynamic_allocation;
     seedQuESTDefault(&env);
+
+    return env;
 }
 
 QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block) {
@@ -1494,8 +1496,10 @@ __global__ void statevec_pauliXKernel_Block(Qureg qureg, int targetQubit, long l
     qreal *stateVecReal = qureg.real_block->data;
     qreal *stateVecImag = qureg.imag_block->data;
 
-    thisTask = blockIdx.x*blockDim.x + threadIdx.x + offset;
+    thisTask = blockIdx.x*blockDim.x + threadIdx.x;
     if (thisTask>=numTasks) return;
+
+    thisTask = thisTask + + offset;
 
     thisBlock   = thisTask / sizeHalfBlock;
     indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock - offset;
@@ -1528,7 +1532,7 @@ void statevec_pauliX(Qureg qureg, int targetQubit)
             compressedMemory_load(qureg.real_mem, i, qureg.real_block);
             compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
             CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
-            statevec_pauliXKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg, targetQubit, offset, numTasks);
+            statevec_pauliXKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg, targetQubit, offset, end);
         }
     } else {
         CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk>>1)/threadsPerCUDABlock);
@@ -1934,7 +1938,7 @@ void statevec_multiControlledPhaseFlip(Qureg qureg, int *controlQubits, int numC
             compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
             CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
             offset = i * qureg.real_mem->values_per_block;
-            statevec_multiControlledPhaseFlipKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
+            statevec_multiControlledPhaseFlipKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(
             qureg, 
             mask, 
             offset);
