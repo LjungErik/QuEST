@@ -5,6 +5,7 @@
 
 #include "QuEST_precision.h"
 #include "zfp.h"
+#include "zfp-config.h"
 
 // Maximum size of a compressed block
 #define MAX_VALUES_PER_BLOCK 1024 // floating point numbers per block
@@ -47,10 +48,12 @@ typedef struct CompressedMemory {
     size_t values_per_block;        // The number of values per each block e.g. x / values_per_block => block index
     CompressionImp imp;
     CompressedBlock* blocks;        // The compressed blocks of data
+    ZFPConfig gpu_zfp_conf;         // Only used for GPU
 } CompressedMemory;
 
 typedef struct CompressionConfig {
     CompressionImp imp;
+    ZFPConfig gpu_zfp_conf;         // Only used for GPU
     size_t n_blocks;
     size_t values_per_block;
     bool use_dynamic_allocation;

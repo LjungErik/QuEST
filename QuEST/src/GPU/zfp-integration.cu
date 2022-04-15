@@ -57,14 +57,14 @@ bool zfpValidateConfig(ZFPConfig config) {
 }
 
 CompressionImp zfpCreate(ZFPConfig config) {
-    CompressionImp imp;
-    ZFPConfig *zfp_conf = (ZFPConfig*) malloc(sizeof(ZFPConfig));
-    (*zfp_conf) = config;
+    CompressionImp imp = {};
+    // ZFPConfig *zfp_conf = (ZFPConfig*) malloc(sizeof(ZFPConfig));
+    // (*zfp_conf) = config;
 
-    imp.config = zfp_conf;
-    imp.max_size = zfpMaxSize;
-    imp.compress = zfpCompress;
-    imp.decompress = zfpDecompress;
+    // imp.config = zfp_conf;
+    // imp.max_size = zfpMaxSize;
+    // imp.compress = zfpCompress;
+    // imp.decompress = zfpDecompress;
 
     return imp;
 }
@@ -77,6 +77,7 @@ size_t zfpMaxSize(void *config) {
     ZFPConfig *zfp_conf = (ZFPConfig*)config;
 
     zfp_stream* zfp = zfp_stream_open(NULL);
+
     zfp_field* field = zfp_field_alloc();
     size_t max_n = 0;
 

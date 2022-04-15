@@ -6,6 +6,7 @@
 #include "QuEST_precision.h"
 #include "compression.h"
 #include "zfp.h"
+#include "zfp-config.h"
 
 #define LOSSLESS_MODE 'R'
 #define ACCURACY_MODE 'a'
@@ -13,20 +14,6 @@
 #define RATE_MODE 'r'
 
 #define ZPF_NULL_BUFFER_EXIT_CODE -66
-
-typedef struct ZFPConfig {
-    unsigned int dimensions;
-    size_t nx;
-    size_t ny;
-    size_t nz;
-    size_t nw;
-    char mode;
-    double tolerance;
-    uint precision;
-    double rate;
-    zfp_exec_policy exec;
-    zfp_type type;
-} ZFPConfig;
 
 bool zfpValidateConfig(ZFPConfig config);
 
