@@ -38,4 +38,6 @@ void dumpQuregStateToFile(Qureg *qureg, char *filename) {
 
     compressedMemory_dump_memory_to_file(qureg->real_mem, qureg->real_block, out_file);
     compressedMemory_dump_memory_to_file(qureg->imag_mem, qureg->imag_block, out_file);
+
+    fclose(out_file);
 }
