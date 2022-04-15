@@ -125,6 +125,8 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env);
 
 void statevec_destroyQureg(Qureg qureg, QuESTEnv env);
 
+void statevec_dump_to_file(Qureg qureg, char* filename);
+
 void statevec_initBlankState(Qureg qureg);
 
 void statevec_initZeroState(Qureg qureg);

@@ -64,7 +64,7 @@ int main (int narg, char** varg) {
     printf("%f", successProb);
     printf("\n");
 
-
+    dumpQuregStateToFile(qureg, "bern_vazirani_statevec_dump.data");
     /*
      * FREE MEMORY
      */

@@ -47,6 +47,10 @@ Qureg createQureg(int numQubits, QuESTEnv env) {
     return qureg;
 }
 
+void dumpQuregStateToFile(Qureg qureg, char *filename) {
+    statevec_dump_to_file(qureg, filename);
+}
+
 Qureg createDensityQureg(int numQubits, QuESTEnv env) {
     validateNumQubitsInQureg(2*numQubits, env.numRanks, __func__);
     

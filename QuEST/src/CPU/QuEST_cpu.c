@@ -1343,6 +1343,21 @@ void statevec_destroyQureg(Qureg qureg, QuESTEnv env){
     qureg.pairStateVec.imag = NULL;
 }
 
+void statevec_dump_to_file(Qureg qureg, char* filename) {
+
+    if (qureg.stateVec.real == NULL || qureg.stateVec.imag == NULL) {
+        printf("Cannot dump null statevec to file\n");
+        return;
+    }
+
+    FILE *fp = fopen(filename, "w");
+
+    fwrite(qureg.stateVec.real, sizeof(*(qureg.stateVec.real)), qureg.numAmpsPerChunk, fp);
+    fwrite(qureg.stateVec.imag, sizeof(*(qureg.stateVec.imag)), qureg.numAmpsPerChunk, fp);
+
+    fclose(fp);
+}
+
 DiagonalOp agnostic_createDiagonalOp(int numQubits, QuESTEnv env) {
 
     // the 2^numQubits values will be evenly split between the env.numRanks nodes

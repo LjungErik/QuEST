@@ -111,6 +111,8 @@ int main() {
         printf("prob of solution |%d> = %g\n", 
             solElem, getProbAmp(qureg, solElem));
     }
+
+    dumpQuregStateToFile(qureg, "grover_statevec_dump.data");
     
     // free memory 
     destroyQureg(qureg, env);
