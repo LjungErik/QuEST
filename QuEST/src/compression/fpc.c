@@ -33,7 +33,7 @@ Software License Terms and Conditions
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-//#include <//assert.h>
+#include <assert.h>
 
 #include "fpc.h"
 
@@ -65,14 +65,16 @@ static int memwrite(void *ptr, size_t elementSize, size_t elementCount, FPC_MEM*
     size_t bytes_left = stream->length - stream->pos;
 
     if (length > bytes_left) {
+        printf("LENGTH BEFORE CUTOFF: %li\n", length);
+        printf("BYTESLEFT: %li      STREAM LENGTH: %li      STREAM POS: %li\n", bytes_left, stream->length, stream->pos);
         length = bytes_left;
-        //printf("CUTOFF LENGTH: %li\n", length);
+        printf("CUTOFF LENGTH: %li\n", length);
     }
+
 
     memcpy(stream->ptr + stream->pos, ptr, length);
     stream->pos += length;
 
-    //printf("POS: %i\n", stream->pos);
   
     return length;
 }
@@ -96,11 +98,11 @@ size_t fpc_compress(long predsizem1, FPC_MEM *input, FPC_MEM *output)
   unsigned long long inbuf[SIZE + 1];
   unsigned char outbuf[6 + (SIZE / 2) + (SIZE * 8) + 2];
 
-  //assert(0 == ((long)outbuf & 0x7));
+  assert(0 == ((long)outbuf & 0x7));
 
   outbuf[0] = predsizem1;
   ioc = memwrite(outbuf, 1, 1, output);
-  //assert(1 == ioc);
+  assert(1 == ioc);
   predsizem1 = (1L << predsizem1) - 1;
 
   hash = 0;
@@ -109,9 +111,9 @@ size_t fpc_compress(long predsizem1, FPC_MEM *input, FPC_MEM *output)
   pred1 = 0;
   pred2 = 0;
   fcm = (long long *)calloc(predsizem1 + 1, 8);
-  //assert(NULL != fcm);
+  assert(NULL != fcm);
   dfcm = (long long *)calloc(predsizem1 + 1, 8);
-  //assert(NULL != dfcm);
+  assert(NULL != dfcm);
 
   intot = memread(inbuf, 8, SIZE, input);
   
@@ -215,13 +217,13 @@ size_t fpc_compress(long predsizem1, FPC_MEM *input, FPC_MEM *output)
     outbuf[3] = out;
     outbuf[4] = out >> 8;
     outbuf[5] = out >> 16;
-    //printf("=====Entering memwrite=====\n");
+    printf("=====Entering memwrite=====\n");
     ioc = memwrite(outbuf, 1, out, output);
 
-    //printf("IOC: %li     and     OUT: %li\n", ioc, out);
-    //printf("======Exiting memwrite======\n");
+    printf("IOC: %li     and     OUT: %li\n", ioc, out);
+    printf("======Exiting memwrite======\n");
 
-    //assert(ioc == out);
+    assert(ioc == out);
     intot = memread(inbuf, 8, SIZE, input);
   }
 
@@ -240,11 +242,11 @@ void fpc_decompress(FPC_MEM *input, FPC_MEM *output)
   long long outbuf[SIZE];
   unsigned char inbuf[(SIZE / 2) + (SIZE * 8) + 6 + 2];
 
-  //assert(0 == ((long)inbuf & 0x7));
+  assert(0 == ((long)inbuf & 0x7));
 
   ioc = memread(inbuf, 1, 7, input);
   if (1 != ioc) {
-    //assert(7 == ioc);
+    assert(7 == ioc);
     predsizem1 = inbuf[0];
     predsizem1 = (1L << predsizem1) - 1;
 
@@ -254,9 +256,9 @@ void fpc_decompress(FPC_MEM *input, FPC_MEM *output)
     pred1 = 0;
     pred2 = 0;
     fcm = (long long *)calloc(predsizem1 + 1, 8);
-    //assert(NULL != fcm);
+    assert(NULL != fcm);
     dfcm = (long long *)calloc(predsizem1 + 1, 8);
-    //assert(NULL != dfcm);
+    assert(NULL != dfcm);
 
     intot = inbuf[3];
     intot = (intot << 8) | inbuf[2];
@@ -264,10 +266,10 @@ void fpc_decompress(FPC_MEM *input, FPC_MEM *output)
     in = inbuf[6];
     in = (in << 8) | inbuf[5];
     in = (in << 8) | inbuf[4];
-    //assert(SIZE >= intot);
+    assert(SIZE >= intot);
     do {
       end = memread(inbuf, 1, in, input);
-      //assert((end + 6) >= in);
+      assert((end + 6) >= in);
       in = (intot + 1) >> 1;
       for (i = 0; i < intot; i += 2) {
         code = inbuf[i >> 1];
@@ -330,9 +332,13 @@ void fpc_decompress(FPC_MEM *input, FPC_MEM *output)
 
         outbuf[i + 1] = val;
       }
+      printf("=====Entering memwrite 2=====\n");
       ioc = memwrite(outbuf, 8, intot, output);
-      
-      //assert(ioc == intot);
+
+      printf("IOC: %li     and     INTOT: %li\n", ioc, intot);
+      printf("======Exiting memwrite 2======\n");
+
+      assert(ioc == intot);
       intot = 0;
       if ((end - 6) >= in) {
         intot = inbuf[in + 2];
@@ -343,7 +349,7 @@ void fpc_decompress(FPC_MEM *input, FPC_MEM *output)
         end = (end << 8) | inbuf[in + 3];
         in = end;
       }
-      //assert(SIZE >= intot);
+      assert(SIZE >= intot);
     } while (0 < intot);
 
     free(fcm);
