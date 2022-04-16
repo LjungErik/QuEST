@@ -8,12 +8,12 @@
 //static ZFPConfig global_config;
 
 void cudaCopyDataToGPU(void *dst, const void *src, size_t count) {
-    printf("Copy data from Host RAM to GPU VRAM, size: %li\n", count);
+    //printf("Copy data from Host RAM to GPU VRAM, size: %li\n", count);
     cudaMemcpy(dst, src, count, cudaMemcpyHostToDevice);
 }
 
 void cudaCopyDataFromGPU(void *dst, const void *src, size_t count) {
-    printf("Copy data from Host RAM to GPU VRAM, size: %li\n", count);
+    //printf("Copy data from Host RAM to GPU VRAM, size: %li\n", count);
     cudaMemcpy(dst, src, count, cudaMemcpyDeviceToHost);
 }
 
@@ -35,7 +35,7 @@ qreal rawDataBlock_get_value(RawDataBlock* block, long long int index) {
 
     qreal ret;
 
-    cudaCopyDataFromGPU(&ret, block->data, sizeof(qreal));
+    cudaCopyDataFromGPU(&ret, (block->data+index), sizeof(qreal));
 
     return ret;
 }
