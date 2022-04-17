@@ -286,6 +286,7 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
     qureg->chunkId = env.rank;
     qureg->numChunks = env.numRanks;
     qureg->isDensityMatrix = 0;
+    qureg->comp = env.comp;
 
     if (env.comp != NO_COMPRESSION) {
         size_t values_per_block = numAmpsPerRank < env.max_values_per_block ? numAmpsPerRank : env.max_values_per_block;
