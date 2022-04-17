@@ -365,8 +365,15 @@ typedef struct Qureg
    
    // Contains current decompressed active raw real values
    RawDataBlock* real_block;
+   
+   //Temporary block for handling access of two different blocks at the same time
+   RawDataBlock* real_tmp_block;
+
    // Contains current decompressed active raw inmaginary valuess
    RawDataBlock* imag_block;
+
+   //Temporary block for handling access of two different blocks at the same time
+   RawDataBlock* imag_tmp_block;
 } Qureg;
 
 /** Information about the environment the program is running in.

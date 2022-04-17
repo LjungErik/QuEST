@@ -69,8 +69,7 @@ void compression_decompress(ZFPConfig *conf, CompressedBlock *in_block, RawDataB
 }
 
 CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
-    CompressedMemory *mem = (CompressedMemory*) malloc(sizeof(CompressedMemory));
-    //cudaMalloc(&mem, sizeof(CompressedMemory));
+    CompressedMemory *mem = (CompressedMemory*) calloc(1, sizeof(CompressedMemory));
     printf("Setting up config data...\n");
 
     // Need to use special function to copy from RAM to VRAM
@@ -82,21 +81,14 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
     mem->n_blocks = conf.n_blocks;
     mem->values_per_block = conf.values_per_block;
 
-    printf("Setup done\n");
-
     size_t max_n = compression_maxSize(&mem->gpu_zfp_conf);
-
-    printf("maxSize\n");
 
     /* Allocate the number of blocks */
     /* For each block allocate the memory for max_n */
-    //printf("Creating %li blocks for memory, Max block size %li, total Max size: %lli\n", 
-    //            mem->n_blocks, max_n, (long long int) (mem->n_blocks * max_n));
+    printf("Creating %li blocks for memory, Max block size %li, total Max size: %lli\n", 
+                mem->n_blocks, max_n, (long long int) (mem->n_blocks * max_n));
 
-    printf("Allocating VRAM\n");
-    mem->blocks = (CompressedBlock *) malloc(mem->n_blocks * sizeof(CompressedBlock));
-    //cudaError t = cudaMalloc(&(mem->blocks), (mem->n_blocks * sizeof(CompressedBlock)));
-    //printf("Allocation status: %x\n", t);
+    mem->blocks = (CompressedBlock *) calloc(mem->n_blocks, sizeof(CompressedBlock));
     for (int i = 0; i < mem->n_blocks; i++) {
         printf("%i - mem block creation\n", i);
         mem->blocks[i].n_values = mem->values_per_block;
@@ -107,6 +99,7 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
             mem->blocks[i].data = NULL;
         } else {
             cudaMalloc(&(mem->blocks[i].data), max_n*sizeof(char));
+            cudaMemset(&(mem->blocks[i].data), 0, max_n*sizeof(char));
         }
     }
 
@@ -139,10 +132,15 @@ void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
 
 
 void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block) {
+    if (rawDataBlock_is_current_block(block, index)) {
+        return;
+    }
+
     if (block->used) {
         compressedMemory_save(mem, block);
     }
 
+    //printf("Decompress block: %li\n", index);
     compression_decompress(&mem->gpu_zfp_conf, &mem->blocks[index], block);
 
     block->mem_block_index = index;
@@ -192,7 +190,7 @@ void compressedMemory_set_value(CompressedMemory *mem, RawDataBlock *block, long
 }
 
 RawDataBlock* rawDataBlock_allocate(CompressionConfig conf) {
-    RawDataBlock* block = (RawDataBlock*) malloc(sizeof(RawDataBlock));
+    RawDataBlock* block = (RawDataBlock*) calloc(1, sizeof(RawDataBlock));
     //cudaMalloc(&block, sizeof(RawDataBlock));
     size_t data_size = (size_t) (conf.values_per_block * sizeof(*(block->data)));
 
@@ -201,6 +199,7 @@ RawDataBlock* rawDataBlock_allocate(CompressionConfig conf) {
     if (conf.use_dynamic_allocation) {
         size_t max_n = compression_maxSize(&conf.gpu_zfp_conf);
         cudaMalloc(&(block->tmp_storage), (max_n * sizeof(char)));
+        cudaMemset(&(block->tmp_storage), 0,(max_n * sizeof(char)));
         block->tmp_max_size = max_n;
     } else {
         block->tmp_storage = NULL;
@@ -208,6 +207,7 @@ RawDataBlock* rawDataBlock_allocate(CompressionConfig conf) {
     }
 
     cudaMalloc(&(block->data), data_size);
+    cudaMemset(&(block->data), 0, data_size);
     block->size = data_size;
     block->n_values = 0;
     block->mem_block_index = 0;

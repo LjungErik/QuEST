@@ -134,13 +134,14 @@ void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bloc
         /* Check if block is allocated already or not */
         if (out_block->data == NULL) {
             /* No memory block exists */
-            out_block->data = malloc(zfpsize);
+            cudaMalloc(&(out_block->data), zfpsize);
         } else if(out_block->size != zfpsize) {
             /* Reallocate memory block */
-            out_block->data = realloc(out_block->data, zfpsize);
+            cudaFree(out_block->data);
+            cudaMalloc(&(out_block->data), zfpsize);
         }
         /* Copy all the data from the buffer to the out block */
-        memcpy(out_block->data, buffer, zfpsize);
+        cudaMemcpy(out_block->data, buffer, zfpsize, cudaMemcpyDeviceToDevice);
     }
 
     out_block->size = zfpsize;
@@ -179,7 +180,7 @@ void zfpDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_bl
         stream_close(stream);
     } else {
         /* No data exists, clear RawDataBlock */
-        memset(out_block->data, 0, out_block->size);
+        cudaMemset(out_block->data, 0, out_block->size);
     }
     
     out_block->size = in_block->n_values * sizeof(*(out_block->data));

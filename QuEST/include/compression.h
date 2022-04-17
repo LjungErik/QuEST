@@ -61,6 +61,7 @@ typedef struct CompressionConfig {
 
 CompressedMemory* compressedMemory_allocate(CompressionConfig conf);
 void compressedMemory_destroy(CompressedMemory *mem);
+void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block);
 void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block); // Decompressing
 
 qreal compressedMemory_get_value(CompressedMemory *mem, RawDataBlock *block, long long int index);
