@@ -146,6 +146,7 @@ static void usage_zfp() {
     fprintf(stderr, "  -2 <nx> <ny> : dimensions for 2D array a[ny][nx]\n");
     fprintf(stderr, "  -3 <nx> <ny> <nz> : dimensions for 3D array a[nz][ny][nx]\n");
     fprintf(stderr, "  -4 <nx> <ny> <nz> <nw> : dimensions for 4D array a[nw][nz][ny][nx]\n");
+    fprintf(stderr, "  -z : use double raw block for fewer compressions\n");
     fprintf(stderr, "Compression parameters:\n");
     fprintf(stderr, "  -R : reversible (lossless) compression\n");
     fprintf(stderr, "  -r <rate> : fixed rate (# compressed bits per floating-point value)\n");
@@ -167,6 +168,7 @@ static void usage_fpz() {
     fprintf(stderr, "  -2 <nx> <ny> : dimensions for 2D array a[ny][nx]\n");
     fprintf(stderr, "  -3 <nx> <ny> <nz> : dimensions for 3D array a[nz][ny][nx]\n");
     fprintf(stderr, "  -4 <nx> <ny> <nz> <nw> : dimensions for 4D array a[nw][nz][ny][nx]\n");
+    fprintf(stderr, "  -z : use double raw block for fewer compressions\n");
     fprintf(stderr, "Compression parameters:\n");
     fprintf(stderr, "  -p <precision> : fixed precision (# uncompressed bits per value)\n");
     fprintf(stderr, "Examples:\n");
@@ -180,6 +182,7 @@ static void usage_fpc() {
     fprintf(stderr, "General Options:\n");
     fprintf(stderr, "  -q <qubits>: number of qubits\n");
     fprintf(stderr, "  -b <block_size> : max size of a block\n");
+    fprintf(stderr, "  -z : use double raw block for fewer compressions\n");
     fprintf(stderr, "Compression parameters:\n");
     fprintf(stderr, "  -p <predsizem1> : magic number (unsure what it does)\n");
     fprintf(stderr, "Examples:\n");
@@ -200,6 +203,7 @@ void zfp_imp (int argc, char** argv) {
     zfp_exec_policy exec = zfp_exec_serial;
     zfp_type type = zfp_type_qreal;
     bool use_dynamic_allocation = false;
+    bool use_double_blocks = false;
 
     /* parse command-line arguments */
     for (int i = 1; i < argc; i++) {
@@ -255,6 +259,9 @@ void zfp_imp (int argc, char** argv) {
         case 'd':
             use_dynamic_allocation = true;
             break;
+        case 'z':
+            use_double_blocks = true;
+            break;
         default:
             usage_zfp();
             break;
@@ -285,7 +292,7 @@ void zfp_imp (int argc, char** argv) {
         usage_zfp();
     }
 
-    QuESTEnv env = createQuESTEnvWithZFP(conf, block_size, use_dynamic_allocation);
+    QuESTEnv env = createQuESTEnvWithZFP(conf, block_size, use_dynamic_allocation, use_double_blocks);
 
     grover_search(qubits, env);
 }
@@ -296,6 +303,7 @@ void fpzip_imp (int argc, char** argv) {
     size_t block_size, nx, ny, nz, nw;
     int type = fpzip_type_qreal;
     int precision = 0;
+    bool use_double_blocks = false;
 
     /* parse command-line arguments */
     for (int i = 1; i < argc; i++) {
@@ -332,6 +340,9 @@ void fpzip_imp (int argc, char** argv) {
         case 'q':
             if (++i == argc || sscanf(argv[i], "%u", &qubits) != 1) { usage_fpz(); }
             break;
+        case 'z':
+            use_double_blocks = true;
+            break;
         default:
             usage_fpz();
             break;
@@ -354,7 +365,7 @@ void fpzip_imp (int argc, char** argv) {
         usage_fpz();
     }
 
-    QuESTEnv env = createQuESTEnvWithFPZIP(conf, block_size);
+    QuESTEnv env = createQuESTEnvWithFPZIP(conf, block_size, use_double_blocks);
 
     grover_search(qubits, env);
 }
@@ -363,6 +374,7 @@ void fpc_imp (int argc, char** argv) {
     uint qubits = 0;
     size_t block_size;
     long predsizem1 = 0;
+    bool use_double_blocks = false;
 
     if(sizeof(double) != sizeof(qreal)) {
         fprintf(stderr, "Invalid qreal size, only support double for fpc\n");
@@ -381,6 +393,9 @@ void fpc_imp (int argc, char** argv) {
             break;
         case 'q':
             if (++i == argc || sscanf(argv[i], "%u", &qubits) != 1) { usage_fpc(); }
+            break;
+        case 'z':
+            use_double_blocks = true;
             break;
         default:
             usage_fpc();
@@ -405,7 +420,7 @@ void fpc_imp (int argc, char** argv) {
         usage_fpc();
     }
 
-    QuESTEnv env = createQuESTEnvWithFPC(conf, block_size);
+    QuESTEnv env = createQuESTEnvWithFPC(conf, block_size, use_double_blocks);
 
     grover_search(qubits, env);
 }

@@ -1325,6 +1325,7 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
         conf.n_blocks = numAmpsPerRank / values_per_block;
         conf.values_per_block = values_per_block;
         conf.use_dynamic_allocation = env.use_dynamic_allocation;
+        conf.use_double_blocks = env.use_double_blocks;
 
         printf("n_blocks: %li, values_per_block: %li\n", conf.n_blocks, conf.values_per_block);
 

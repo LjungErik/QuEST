@@ -30,20 +30,24 @@ typedef struct CompressedBlock {
     void* data;       // Pointer to data of set byte size
 } CompressedBlock;
 
-typedef struct RawDataBlock {
+typedef struct DecompressedBlock {
     size_t n_values;
     size_t size;
     size_t mem_block_index;         // Index of the block in compressed memory
     bool used;
     qreal* data;
-    void* tmp_storage;              // Temporary data storage used for compressing data dynamically
-    size_t tmp_max_size;            // Max size of temporary data
+} DecompressedBlock;
+
+typedef struct RawDataBlock {
+    DecompressedBlock decomp_blocks[2];
+    int lru_block;
+    bool use_double_blocks;
 } RawDataBlock;
 
 typedef struct CompressionImp {
     size_t (*max_size)(void*);
-    void (*compress)(void*, CompressedBlock*, RawDataBlock*);
-    void (*decompress)(void*, CompressedBlock*, RawDataBlock*);
+    void (*compress)(void*, CompressedBlock*, DecompressedBlock*);
+    void (*decompress)(void*, CompressedBlock*, DecompressedBlock*);
     void *config;
 } CompressionImp;
 
@@ -52,6 +56,7 @@ typedef struct CompressedMemory {
     size_t values_per_block;        // The number of values per each block e.g. x / values_per_block => block index
     CompressionImp imp;
     CompressedBlock* blocks;        // The compressed blocks of data
+    CompressedBlock tmp_block;
     ZFPConfig gpu_zfp_conf;         // Only used for GPU
 } CompressedMemory;
 
@@ -61,12 +66,13 @@ typedef struct CompressionConfig {
     size_t n_blocks;
     size_t values_per_block;
     bool use_dynamic_allocation;
+    bool use_double_blocks;
 } CompressionConfig;
 
 CompressedMemory* compressedMemory_allocate(CompressionConfig conf);
 void compressedMemory_destroy(CompressedMemory *mem);
-void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block);
-void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block); // Decompressing
+void compressedMemory_save(CompressedMemory *mem, DecompressedBlock* block);
+DecompressedBlock* compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block);
 
 qreal compressedMemory_get_value(CompressedMemory *mem, RawDataBlock *block, long long int index);
 void compressedMemory_set_value(CompressedMemory *mem, RawDataBlock *block, long long int index, qreal value);
@@ -75,10 +81,6 @@ void compressedMemory_dump_memory_to_file(CompressedMemory *mem, RawDataBlock *b
 
 RawDataBlock* rawDataBlock_allocate(CompressionConfig conf);
 void rawDataBlock_destroy(RawDataBlock* block);
-
-void rawDataBlock_dump_to_file(RawDataBlock *block, FILE *stream);
-
-bool rawDataBlock_is_current_block(RawDataBlock* block, long long int block_idx);
 
 #ifdef __cplusplus
 }
