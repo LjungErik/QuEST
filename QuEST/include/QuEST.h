@@ -365,15 +365,10 @@ typedef struct Qureg
    
    // Contains current decompressed active raw real values
    RawDataBlock* real_block;
-   
-   //Temporary block for handling access of two different blocks at the same time
-   RawDataBlock* real_tmp_block;
 
    // Contains current decompressed active raw inmaginary valuess
    RawDataBlock* imag_block;
 
-   //Temporary block for handling access of two different blocks at the same time
-   RawDataBlock* imag_tmp_block;
 } Qureg;
 
 /** Information about the environment the program is running in.
@@ -395,6 +390,7 @@ typedef struct QuESTEnv
     FPCConfig fpc_conf;
     size_t max_values_per_block;
     bool use_dynamic_allocation;
+    bool use_double_blocks;
 } QuESTEnv;
 
 /*
@@ -1895,7 +1891,7 @@ QuESTEnv createQuESTEnv(void);
  * @return object representing the execution environment. A single instance is used for each program
  * @author Erik Ljung
  */
-QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation);
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation, bool use_double_blocks);
 
 /** Create the QuEST execution environment with FPZIP compression.
  * This should be called only once, and the environment should be freed with destroyQuESTEnv at the end
@@ -1909,7 +1905,7 @@ QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool
  * @return object representing the execution environment. A single instance is used for each program
  * @author Erik Ljung
  */
-QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block);
+QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block, bool use_double_blocks);
 
 /** Create the QuEST execution environment with FPC compression.
  * This should be called only once, and the environment should be freed with destroyQuESTEnv at the end
@@ -1923,7 +1919,7 @@ QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block);
  * @return object representing the execution environment. A single instance is used for each program
  * @author Erik Ljung
  */
-QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block);
+QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block, bool use_double_blocks);
 
 
 /** Destroy the QuEST environment. 

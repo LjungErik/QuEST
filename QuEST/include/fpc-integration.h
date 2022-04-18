@@ -22,8 +22,8 @@ void fpcDestroy(CompressionImp imp);
 
 size_t fpcMaxSize(void *config);
 
-void fpcCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_block);
+void fpcCompress(void *config, CompressedBlock* out_block, DecompressedBlock* in_block);
 
-void fpcDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_block);
+void fpcDecompress(void *config, CompressedBlock* in_block, DecompressedBlock* out_block);
 
 #endif

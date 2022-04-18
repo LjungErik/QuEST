@@ -49,29 +49,17 @@ size_t fpzipMaxSize(void *config) {
     return count * size;
 }
 
-void fpzipCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_block) {
+void fpzipCompress(void *config, CompressedBlock* out_block, DecompressedBlock* in_block) {
     FPZIPConfig *fpz_conf = (FPZIPConfig*)config;
     FPZ* fpz;
     size_t fpzsize;
-    void* buffer;
-    size_t buffer_size;
 
-    if (in_block->tmp_storage != NULL) {
-         /* Use temporary block for dynamic memory allocation */
-        buffer = in_block->tmp_storage;
-        buffer_size = in_block->tmp_max_size;
-    } else {
-       /* Use the assigned memory in this case */
-        buffer = out_block->data;
-        buffer_size = out_block->max_size;
-    }
-
-    if (buffer == NULL) {
+    if (out_block->data == NULL) {
         printf("PANIC: No valid buffer exists!");
         exit(FPZIP_NULL_BUFFER_EXIT_CODE);
     }
 
-    fpz = fpzip_write_to_buffer(buffer, buffer_size);
+    fpz = fpzip_write_to_buffer(out_block->data, out_block->max_size);
     _fpzipConfigure(fpz_conf, fpz);
 
     fpzsize = fpzip_write(fpz, in_block->data);
@@ -80,43 +68,30 @@ void fpzipCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_bl
         exit(-1);
     }
 
-    /* Handling Dynamic Allocation */
-    if (buffer != out_block->data) {
-        /* Check if block is allocated already or not */
-        if (out_block->data == NULL) {
-            /* No memory block exists */
-            out_block->data = malloc(fpzsize);
-        } else if(out_block->size != fpzsize) {
-            /* Reallocate memory block */
-            out_block->data = realloc(out_block->data, fpzsize);
-        }
-        /* Copy all the data from the buffer to the out block */
-        memcpy(out_block->data, buffer, fpzsize);
-    }
-
     out_block->size = fpzsize;
     out_block->n_values = in_block->n_values;
 
     fpzip_write_close(fpz);
 }
 
-void fpzipDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_block) {
+void fpzipDecompress(void *config, CompressedBlock* in_block, DecompressedBlock* out_block) {
     /* write the code to decompress the data blocks */
     FPZIPConfig *fpz_conf = (FPZIPConfig*)config;
     FPZ* fpz;
 
-    if (in_block->data != NULL) {
-        fpz = fpzip_read_from_buffer(in_block->data);
-        _fpzipConfigure(fpz_conf, fpz);
+    fpz = fpzip_read_from_buffer(in_block->data);
+    _fpzipConfigure(fpz_conf, fpz);
 
-        if (!fpzip_read(fpz, out_block->data)) {
-            fprintf(stderr, "decompression failed: %s\n", fpzip_errstr[fpzip_errno]);
-            exit(-1);
-        }
-        fpzip_read_close(fpz);
-    } else {
-        memset(out_block->data, 0, out_block->size);
+    if (in_block->data == NULL) {
+        printf("PANIC: No valid input exists!");
+        exit(FPZIP_NULL_BUFFER_EXIT_CODE);
     }
+
+    if (!fpzip_read(fpz, out_block->data)) {
+        fprintf(stderr, "decompression failed: %s\n", fpzip_errstr[fpzip_errno]);
+        exit(-1);
+    }
+    fpzip_read_close(fpz);
 
     out_block->size = in_block->n_values * sizeof(*(out_block->data));
     out_block->n_values = in_block->n_values;

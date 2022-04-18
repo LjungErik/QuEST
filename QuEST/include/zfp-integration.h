@@ -27,9 +27,9 @@ void zfpDestroy(CompressionImp imp);
 
 size_t zfpMaxSize(void *config);
 
-void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_block);
+void zfpCompress(void *config, CompressedBlock* out_block, DecompressedBlock* in_block);
 
-void zfpDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_block);
+void zfpDecompress(void *config, CompressedBlock* in_block, DecompressedBlock* out_block);
 
 #ifdef __cplusplus
 }

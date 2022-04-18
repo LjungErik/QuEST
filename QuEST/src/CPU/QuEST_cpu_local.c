@@ -184,7 +184,7 @@ QuESTEnv createQuESTEnv(void) {
     return env;
 }
 
-QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation) {
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation, bool use_double_blocks) {
     // init MPI environment
     
     printf("Maximum values per block: %li\n", max_values_per_block);
@@ -200,12 +200,13 @@ QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool
     env.zfp_conf = conf;
     env.max_values_per_block = max_values_per_block;
     env.use_dynamic_allocation = use_dynamic_allocation;
+    env.use_double_blocks = use_double_blocks;
     seedQuESTDefault(&env);
     
     return env;
 }
 
-QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block) {
+QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block, bool use_double_blocks) {
     // init MPI environment
     
     printf("Maximum values per block: %li\n", max_values_per_block);
@@ -221,12 +222,13 @@ QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block) 
     env.fpzip_conf = conf;
     env.max_values_per_block = max_values_per_block;
     env.use_dynamic_allocation = true;
+    env.use_double_blocks = use_double_blocks;
     seedQuESTDefault(&env);
     
     return env;
 }
 
-QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block) {
+QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block, bool use_double_blocks) {
     // init MPI environment
     
     printf("Maximum values per block: %li\n", max_values_per_block);
@@ -242,6 +244,7 @@ QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block) {
     env.fpc_conf = conf;
     env.max_values_per_block = max_values_per_block;
     env.use_dynamic_allocation = true;
+    env.use_double_blocks = use_double_blocks;
     seedQuESTDefault(&env);
     
     return env;

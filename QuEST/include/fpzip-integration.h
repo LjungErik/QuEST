@@ -26,8 +26,8 @@ void fpzipDestroy(CompressionImp imp);
 
 size_t fpzipMaxSize(void *config);
 
-void fpzipCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_block);
+void fpzipCompress(void *config, CompressedBlock* out_block, DecompressedBlock* in_block);
 
-void fpzipDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_block);
+void fpzipDecompress(void *config, CompressedBlock* in_block, DecompressedBlock* out_block);
 
 #endif
