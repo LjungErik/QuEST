@@ -89,7 +89,6 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
     }
 
     if (conf.use_dynamic_allocation) {
-        size_t max_n = compression_maxSize(&conf.imp);
         mem->tmp_block.data = calloc(max_n, sizeof(char));
         mem->tmp_block.max_size = max_n;
         mem->tmp_block.size = 0;
@@ -199,6 +198,14 @@ DecompressedBlock* compressedMemory_load(CompressedMemory *mem, size_t index, Ra
     return out_block;
 }
 
+void compressedMemory_save_all(CompressedMemory *mem, RawDataBlock* block) {
+    for(int i = 0; i < 2; i++) {
+        if(block->decomp_blocks[i].used) {
+            compressedMemory_save(mem, &block->decomp_blocks[i]);
+        }
+    }
+}
+
 qreal compressedMemory_get_value(CompressedMemory* mem, RawDataBlock* block, long long int index) {
     // Calculate which block index should be in (index -> block index)
     long long int block_idx = (index / mem->values_per_block);
@@ -229,7 +236,6 @@ void compressedMemory_set_value(CompressedMemory* mem, RawDataBlock* block, long
     // Calculate local index inside block (index -> internal block index, range. 0-1023) 
     long long int internal_idx = index - (block_idx * mem->values_per_block);
     
-    // Check if RawDataBlock is the correct block index
     DecompressedBlock *out_block = compressedMemory_load(mem, block_idx, block);  
 
     rawDataBlock_set_value(out_block, internal_idx, value);
