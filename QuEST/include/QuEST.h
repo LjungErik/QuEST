@@ -2125,6 +2125,8 @@ qreal getImagAmp(Qureg qureg, long long int index);
  */
 qreal getProbAmp(Qureg qureg, long long int index);
 
+void printState(Qureg qureg);
+
 /** Get an amplitude from a density matrix at a given row and column.
  *
  * @see

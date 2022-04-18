@@ -248,7 +248,7 @@ void reportQuregParams(Qureg qureg){
 qreal statevec_getProbAmp(Qureg qureg, long long int index){
     qreal real = statevec_getRealAmp(qureg, index);
     qreal imag = statevec_getImagAmp(qureg, index);
-    printf("Real: %g, Imag: %g => prob: %g\n", real, imag, real*real + imag*imag);
+    //printf("Real: %g, Imag: %g => prob: %g\n", real, imag, real*real + imag*imag);
     return real*real + imag*imag;
 }
 

@@ -133,6 +133,7 @@ void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
 
 void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block) {
     if (rawDataBlock_is_current_block(block, index)) {
+        //printf("Block already loaded!\n");
         return;
     }
 
@@ -140,7 +141,7 @@ void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
         compressedMemory_save(mem, block);
     }
 
-    //printf("Decompress block: %li\n", index);
+    //printf("Decompress block: %li, block values: %li\n", index, block->n_values);
     compression_decompress(&mem->gpu_zfp_conf, &mem->blocks[index], block);
 
     block->mem_block_index = index;

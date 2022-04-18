@@ -105,7 +105,7 @@ void grover_search(int numQubits, QuESTEnv env) {
     
     // randomly choose the element for which to search
     srand(time(NULL));
-    int solElem = rand() % numElems;
+    int solElem = 7;//rand() % numElems;
     
     // prepare |+>
     Qureg qureg = createQureg(numQubits, env);
@@ -127,7 +127,8 @@ void grover_search(int numQubits, QuESTEnv env) {
         //int outcome = measure(qureg, i);
         //printf("Qubit %i state: %i\n", i, outcome);
     }
-    
+
+    //printState(qureg);
 
     // free memory 
     destroyQureg(qureg, env);
