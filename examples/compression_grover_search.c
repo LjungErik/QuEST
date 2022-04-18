@@ -123,10 +123,10 @@ void grover_search(int numQubits, QuESTEnv env) {
     dumpQuregStateToFile(&qureg, "grover-search_dump.data");
 
     // Collect each qubits measure and dump to file
-    for (int i = 0; i < numQubits; i++) {
-        //int outcome = measure(qureg, i);
-        //printf("Qubit %i state: %i\n", i, outcome);
-    }
+    // for (int i = 0; i < numQubits; i++) {
+    //     int outcome = measure(qureg, i);
+    //     printf("Qubit %i state: %i\n", i, outcome);
+    // }
 
     //printState(qureg);
 
