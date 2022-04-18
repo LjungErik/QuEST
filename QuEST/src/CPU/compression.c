@@ -17,7 +17,7 @@ qreal rawDataBlock_get_value(DecompressedBlock* block, long long int index) {
     }
 
     if (block->n_values <= index) {
-        printf("Error, cannot fetch index, index out of range");
+        printf("Error, cannot fetch index, index out of range: n_values != index, %li != %lli\n", block->n_values, index);
         return 0.0;
     }
 
@@ -31,7 +31,7 @@ bool rawDataBlock_set_value(DecompressedBlock* block, long long int index, qreal
     }
 
     if (block->n_values <= index) {
-        printf("Error, cannot fetch index, index out of range");
+        printf("Error, cannot fetch index, index out of range: n_values != index, %li != %lli\n", block->n_values, index);
         return false;
     }
 
@@ -188,6 +188,8 @@ DecompressedBlock* compressedMemory_load(CompressedMemory *mem, size_t index, Ra
             memset(out_block->data, 0, out_block->size);
         }
 
+        out_block->n_values = in_block->n_values;
+        out_block->size = in_block->n_values * sizeof(*(out_block->data));
         out_block->mem_block_index = index;
         out_block->used = true;
     }

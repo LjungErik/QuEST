@@ -202,6 +202,8 @@ DecompressedBlock *compressedMemory_load(CompressedMemory *mem, size_t index, Ra
             cudaMemset(out_block->data, 0, out_block->size);
         }
 
+        out_block->n_values = in_block->n_values;
+        out_block->size = in_block->n_values * sizeof(*(out_block->data));
         out_block->mem_block_index = index;
         out_block->used = true;
     }
