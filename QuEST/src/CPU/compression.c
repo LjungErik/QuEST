@@ -170,7 +170,7 @@ DecompressedBlock* compressedMemory_load(CompressedMemory *mem, size_t index, Ra
 
         /* Check if block not found. Then use the block that is not resently used */
         if (foundIndex == -1) {
-            foundIndex = block->lru_block + 1 % 2;
+            foundIndex = (block->lru_block + 1) % 2;
         }
     }
 
@@ -249,6 +249,7 @@ RawDataBlock* rawDataBlock_allocate(CompressionConfig conf) {
     printf("Allocating Raw Data block with data size: %li\n", data_size);
 
     block->lru_block = 1;
+    block->use_double_blocks = conf.use_double_blocks;
 
     block->decomp_blocks[0].data = malloc(data_size);
     block->decomp_blocks[0].size = data_size;
@@ -258,6 +259,7 @@ RawDataBlock* rawDataBlock_allocate(CompressionConfig conf) {
     block->decomp_blocks[1].data = NULL;
 
     if (conf.use_double_blocks) {
+        printf("Using double raw data blocks!\n");
         block->decomp_blocks[1].data = malloc(data_size);
         block->decomp_blocks[1].size = data_size;
         block->decomp_blocks[1].n_values = 0;
