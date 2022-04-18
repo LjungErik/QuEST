@@ -303,6 +303,7 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
         conf.n_blocks = numAmpsPerRank / values_per_block;
         conf.values_per_block = values_per_block;
         conf.use_dynamic_allocation = env.use_dynamic_allocation;
+        conf.use_double_blocks = env.use_double_blocks;
 
         if (env.comp == ZFP_COMPRESSION) {
             conf.gpu_zfp_conf = env.zfp_conf;
@@ -529,7 +530,7 @@ QuESTEnv createQuESTEnv(void) {
     return env;
 }
 
-QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation) {
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation, bool use_double_blocks) {
     
     if (!GPUExists()){
         printf("Trying to run GPU code with no GPU available\n");
@@ -549,18 +550,19 @@ QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool
     env.zfp_conf = conf;
     env.max_values_per_block = max_values_per_block;
     env.use_dynamic_allocation = use_dynamic_allocation;
+    env.use_double_blocks = true;
     seedQuESTDefault(&env);
 
     return env;
 }
 
-QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block) {
+QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block, bool use_double_blocks) {
     
     printf("createQuESTEnvFPZIP not implemented\n");
     exit(EXIT_FAILURE);
 }
 
-QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block) {
+QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block, bool use_double_blocks) {
     
     printf("createQuESTEnvFPC not implemented\n");
     exit(EXIT_FAILURE);
@@ -695,13 +697,13 @@ void statevec_initBlankState(Qureg qureg)
     int threadsPerCUDABlock, CUDABlocks;
     threadsPerCUDABlock = 128;
     for(size_t i = 0; i < qureg.real_mem->n_blocks; i++) {
-        compressedMemory_load(qureg.real_mem, i, qureg.real_block);
-        compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
-        CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
+        DecompressedBlock *real_block = compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+        DecompressedBlock *imag_block =compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+        CUDABlocks = ceil((qreal)(real_block->n_values)/threadsPerCUDABlock);
         statevec_initBlankStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
-        qureg.real_block->n_values, 
-        qureg.real_block->data, 
-        qureg.imag_block->data);
+        real_block->n_values, 
+        real_block->data, 
+        imag_block->data);
     }
 }
 
@@ -733,21 +735,21 @@ void statevec_initZeroState(Qureg qureg)
     int threadsPerCUDABlock, CUDABlocks;
     threadsPerCUDABlock = 128;
 
-    compressedMemory_load(qureg.real_mem, 0, qureg.real_block);
-    compressedMemory_load(qureg.imag_mem, 0, qureg.imag_block);
-    CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
+    DecompressedBlock *real_block = compressedMemory_load(qureg.real_mem, 0, qureg.real_block);
+    DecompressedBlock *imag_block = compressedMemory_load(qureg.imag_mem, 0, qureg.imag_block);
+    CUDABlocks = ceil((qreal)(real_block->n_values)/threadsPerCUDABlock);
     statevec_initZeroStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
-    qureg.real_block->n_values, 
-    qureg.real_block->data, 
-    qureg.imag_block->data);
+    real_block->n_values, 
+    real_block->data, 
+    imag_block->data);
 
     printf("Setting zero State for index 0\n");
 
     for(size_t i = 1; i < qureg.real_mem->n_blocks; i++) {
-        compressedMemory_load(qureg.real_mem, i, qureg.real_block);
-        compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
-        CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
-        statevec_initBlankStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->n_values, qureg.real_block->data, qureg.imag_block->data);
+        real_block = compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+        imag_block = compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+        CUDABlocks = ceil((qreal)(real_block->n_values)/threadsPerCUDABlock);
+        statevec_initBlankStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(real_block->n_values, real_block->data, imag_block->data);
     }
 }
 
@@ -770,10 +772,10 @@ void statevec_initPlusState(Qureg qureg)
     qreal normFactor = 1.0/sqrt((qreal)qureg.numAmpsPerChunk);
     
     for(size_t i = 0; i < qureg.real_mem->n_blocks; i++) {
-        compressedMemory_load(qureg.real_mem, i, qureg.real_block);
-        compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
-        CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
-        statevec_initPlusStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->n_values, normFactor,qureg.real_block->data, qureg.imag_block->data);
+        DecompressedBlock *real_block = compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+        DecompressedBlock *imag_block = compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+        CUDABlocks = ceil((qreal)(real_block->n_values)/threadsPerCUDABlock);
+        statevec_initPlusStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(real_block->n_values, normFactor,real_block->data, imag_block->data);
     }
 }
 
@@ -1549,22 +1551,19 @@ void statevec_pauliX(Qureg qureg, int targetQubit)
     while(offset < numTasks) { // 0 < 512
         /* For each size half block run through x number of blocks to equal the sizeOfHalfBlock*/
         for(size_t k = 0; k < blocks_to_process; k++) {
-            compressedMemory_load(qureg.real_mem, i, qureg.real_block);
-            compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
-            cudaDeviceSynchronize();
+            DecompressedBlock *real_block = compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+            DecompressedBlock *imag_block = compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
             CUDABlocks = ceil((qreal)(step)/threadsPerCUDABlock);
             if (sizeHalfBlock < qureg.real_mem->values_per_block) { // false
                 /* Both indexLo and indexUp fit in the current block */
-                statevec_pauliXKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->data, qureg.imag_block->data, qureg.real_block->data, qureg.imag_block->data, targetQubit, step);
+                statevec_pauliXKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(real_block->data, imag_block->data, real_block->data, imag_block->data, targetQubit, step);
             } else {
                 /* They are in different blocks */
                 // Calculate what the next block indexLo block should be
                 size_t j = i + blocks_to_process;
-                compressedMemory_load(qureg.real_mem, j, qureg.real_tmp_block);
-                compressedMemory_load(qureg.imag_mem, j, qureg.imag_tmp_block);
-                statevec_pauliXKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->data, qureg.imag_block->data, qureg.real_tmp_block->data, qureg.imag_tmp_block->data, targetQubit, step);
-                compressedMemory_save(qureg.real_mem, qureg.real_tmp_block);
-                compressedMemory_save(qureg.imag_mem, qureg.imag_tmp_block);
+                DecompressedBlock *real_tmp_block = compressedMemory_load(qureg.real_mem, j, qureg.real_block);
+                DecompressedBlock *imag_tmp_block = compressedMemory_load(qureg.imag_mem, j, qureg.imag_block);
+                statevec_pauliXKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(real_block->data, imag_block->data, real_tmp_block->data, imag_tmp_block->data, targetQubit, step);
             }
             i++;
             offset += step;
@@ -1572,6 +1571,9 @@ void statevec_pauliX(Qureg qureg, int targetQubit)
 
         i += sizeHalfBlock/qureg.real_mem->values_per_block;
     }
+
+    compressedMemory_save_all(qureg.real_mem, qureg.real_block);
+    compressedMemory_save_all(qureg.imag_mem, qureg.imag_block);
 }
 
 __global__ void statevec_pauliYKernel(Qureg qureg, int targetQubit, int conjFac){
@@ -1965,13 +1967,13 @@ void statevec_multiControlledPhaseFlip(Qureg qureg, int *controlQubits, int numC
     long long int offset;
     long long int stateVecSize = qureg.numAmpsPerChunk;
     for(size_t i = 0; i < qureg.real_mem->n_blocks; i++) {
-        compressedMemory_load(qureg.real_mem, i, qureg.real_block);
-        compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
-        CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
+        DecompressedBlock *real_block = compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+        DecompressedBlock *imag_block = compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+        CUDABlocks = ceil((qreal)(real_block->n_values)/threadsPerCUDABlock);
         offset = i * qureg.real_mem->values_per_block;
         statevec_multiControlledPhaseFlipKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(
-        qureg.real_block->data,
-        qureg.imag_block->data, 
+        real_block->data,
+        imag_block->data, 
         mask, 
         offset,
         stateVecSize);
@@ -2135,27 +2137,28 @@ void statevec_hadamard(Qureg qureg, int targetQubit)
     while(offset < numTasks) {
         /* For each size half block run through x number of blocks to equal the sizeOfHalfBlock*/
         for(size_t k = 0; k < blocks_to_process; k++) {
-            compressedMemory_load(qureg.real_mem, i, qureg.real_block);
-            compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+            DecompressedBlock *real_block = compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+            DecompressedBlock *imag_block = compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
             CUDABlocks = ceil((qreal)(step)/threadsPerCUDABlock);
             if (sizeHalfBlock < qureg.real_mem->values_per_block) { // false
                 /* Both indexLo and indexUp fit in the current block */
-                statevec_hadamardKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->data, qureg.imag_block->data, qureg.real_block->data, qureg.imag_block->data, targetQubit, step);
+                statevec_hadamardKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(real_block->data, imag_block->data, real_block->data, imag_block->data, targetQubit, step);
             } else {
                 /* They are in different blocks */
                 // Calculate what the next block indexLo block should be
                 size_t j = i + blocks_to_process;
-                compressedMemory_load(qureg.real_mem, j, qureg.real_tmp_block);
-                compressedMemory_load(qureg.imag_mem, j, qureg.imag_tmp_block);
-                statevec_hadamardKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->data, qureg.imag_block->data, qureg.real_tmp_block->data, qureg.imag_tmp_block->data, targetQubit, step);
-                compressedMemory_save(qureg.real_mem, qureg.real_tmp_block);
-                compressedMemory_save(qureg.imag_mem, qureg.imag_tmp_block);
+                DecompressedBlock *real_tmp_block = compressedMemory_load(qureg.real_mem, j, qureg.real_block);
+                DecompressedBlock *imag_tmp_block = compressedMemory_load(qureg.imag_mem, j, qureg.imag_block);
+                statevec_hadamardKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(real_block->data, imag_block->data, real_tmp_block->data, imag_tmp_block->data, targetQubit, step);
             }
             i++;
             offset += step;
         }
         i += sizeHalfBlock/qureg.real_mem->values_per_block;
     }
+
+    compressedMemory_save_all(qureg.real_mem, qureg.real_block);
+    compressedMemory_save_all(qureg.imag_mem, qureg.imag_block);
 }
 
 __global__ void statevec_controlledNotKernel(Qureg qureg, int controlQubit, int targetQubit)
