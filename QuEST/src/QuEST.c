@@ -936,6 +936,10 @@ qreal getProbAmp(Qureg qureg, long long int index) {
     return statevec_getProbAmp(qureg, index);
 }
 
+void printState(Qureg qureg) {
+    statevec_printState(qureg);
+}
+
 Complex getAmp(Qureg qureg, long long int index) {
     validateStateVecQureg(qureg, __func__);
     validateAmpIndex(qureg, index, __func__);

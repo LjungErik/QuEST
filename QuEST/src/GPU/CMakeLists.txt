@@ -1,5 +1,7 @@
 set(QuEST_SRC_ARCHITECTURE_DEPENDENT
     ${CMAKE_CURRENT_SOURCE_DIR}/QuEST_gpu.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/zfp-integration.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/compression_gpu.cu
     PARENT_SCOPE
 )
 

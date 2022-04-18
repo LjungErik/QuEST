@@ -11,6 +11,8 @@
 # include "QuEST_precision.h"
 # include "QuEST_internal.h"    // purely to resolve getQuESTDefaultSeedKey
 # include "mt19937ar.h"
+# include "zfp-integration.h"
+# include "zfp.h"
 
 # include <stdlib.h>
 # include <stdio.h>
@@ -149,6 +151,14 @@ __forceinline__ __device__ long long int insertZeroBits(long long int number, in
 extern "C" {
 #endif
 
+void statevec_printState(Qureg qureg) {
+    for(size_t i = 0; i < qureg.numAmpsPerChunk; i++) {
+        qreal real = statevec_getRealAmp(qureg, i);
+        qreal imag = statevec_getImagAmp(qureg, i);
+        printf("[%li] REAL:  %g, IMAG: %g\n", i, real, imag);
+    }
+}
+
 
 void statevec_setAmps(Qureg qureg, long long int startInd, qreal* reals, qreal* imags, long long int numAmps) {
     
@@ -277,6 +287,41 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
     // allocate CPU memory
     long long int numAmps = 1L << numQubits;
     long long int numAmpsPerRank = numAmps/env.numRanks;
+
+    qureg->numQubitsInStateVec = numQubits;
+    qureg->numAmpsPerChunk = numAmpsPerRank;
+    qureg->numAmpsTotal = numAmps;
+    qureg->chunkId = env.rank;
+    qureg->numChunks = env.numRanks;
+    qureg->isDensityMatrix = 0;
+    qureg->comp = env.comp;
+
+    if (env.comp != NO_COMPRESSION) {
+        size_t values_per_block = numAmpsPerRank < env.max_values_per_block ? numAmpsPerRank : env.max_values_per_block;
+
+        CompressionConfig conf;
+        conf.n_blocks = numAmpsPerRank / values_per_block;
+        conf.values_per_block = values_per_block;
+        conf.use_dynamic_allocation = env.use_dynamic_allocation;
+
+        if (env.comp == ZFP_COMPRESSION) {
+            conf.gpu_zfp_conf = env.zfp_conf;
+        } else {
+            fprintf(stderr, "Unsupported compression type for GPU acceleration: %i not supported\n", env.comp);
+            exit(1);
+        }
+        
+        qureg->real_mem = compressedMemory_allocate(conf);
+        qureg->imag_mem = compressedMemory_allocate(conf);
+
+        qureg->real_block = rawDataBlock_allocate(conf);
+        qureg->imag_block = rawDataBlock_allocate(conf);
+
+        /* Allocate the temporary blocks */
+        qureg->real_tmp_block = rawDataBlock_allocate(conf);
+        qureg->imag_tmp_block = rawDataBlock_allocate(conf);
+    }
+
     qureg->stateVec.real = (qreal*) malloc(numAmpsPerRank * sizeof(qureg->stateVec.real));
     qureg->stateVec.imag = (qreal*) malloc(numAmpsPerRank * sizeof(qureg->stateVec.imag));
     if (env.numRanks>1){
@@ -296,30 +341,13 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
         exit (EXIT_FAILURE);
     }
 
-    qureg->numQubitsInStateVec = numQubits;
-    qureg->numAmpsPerChunk = numAmpsPerRank;
-    qureg->numAmpsTotal = numAmps;
-    qureg->chunkId = env.rank;
-    qureg->numChunks = env.numRanks;
-    qureg->isDensityMatrix = 0;
-
-    // allocate GPU memory
-    cudaMalloc(&(qureg->deviceStateVec.real), qureg->numAmpsPerChunk*sizeof(*(qureg->deviceStateVec.real)));
-    cudaMalloc(&(qureg->deviceStateVec.imag), qureg->numAmpsPerChunk*sizeof(*(qureg->deviceStateVec.imag)));
-    cudaMalloc(&(qureg->firstLevelReduction), ceil(qureg->numAmpsPerChunk/(qreal)REDUCE_SHARED_SIZE)*sizeof(qreal));
-    cudaMalloc(&(qureg->secondLevelReduction), ceil(qureg->numAmpsPerChunk/(qreal)(REDUCE_SHARED_SIZE*REDUCE_SHARED_SIZE))*
-            sizeof(qreal));
-
-    // check gpu memory allocation was successful
-    if (!(qureg->deviceStateVec.real) || !(qureg->deviceStateVec.imag)){
-        printf("Could not allocate memory on GPU!\n");
-        exit (EXIT_FAILURE);
-    }
+    printf("Creation completed\n");
 
 }
 
 void statevec_destroyQureg(Qureg qureg, QuESTEnv env)
 {
+
     // Free CPU memory
     free(qureg.stateVec.real);
     free(qureg.stateVec.imag);
@@ -328,11 +356,34 @@ void statevec_destroyQureg(Qureg qureg, QuESTEnv env)
         free(qureg.pairStateVec.imag);
     }
 
-    // Free GPU memory
-    cudaFree(qureg.deviceStateVec.real);
-    cudaFree(qureg.deviceStateVec.imag);
-    cudaFree(qureg.firstLevelReduction);
-    cudaFree(qureg.secondLevelReduction);
+    if (env.comp != NO_COMPRESSION) {
+        // free space
+
+        compressedMemory_destroy(qureg.real_mem);
+        compressedMemory_destroy(qureg.imag_mem);
+
+        rawDataBlock_destroy(qureg.real_block);
+        rawDataBlock_destroy(qureg.imag_block);
+
+        rawDataBlock_destroy(qureg.real_tmp_block);
+        rawDataBlock_destroy(qureg.imag_tmp_block);
+    }
+    else {
+        // Free GPU memory
+        cudaFree(qureg.deviceStateVec.real);
+        cudaFree(qureg.deviceStateVec.imag);
+        cudaFree(qureg.firstLevelReduction);
+        cudaFree(qureg.secondLevelReduction);
+    }
+
+    qureg.stateVec.real = NULL;
+    qureg.stateVec.imag = NULL;
+    qureg.pairStateVec.real = NULL;
+    qureg.pairStateVec.imag = NULL;
+    qureg.real_mem = NULL;
+    qureg.imag_mem = NULL;
+    qureg.real_block = NULL;
+    qureg.imag_block = NULL;
 }
 
 DiagonalOp agnostic_createDiagonalOp(int numQubits, QuESTEnv env) {
@@ -478,6 +529,43 @@ QuESTEnv createQuESTEnv(void) {
     return env;
 }
 
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation) {
+    
+    if (!GPUExists()){
+        printf("Trying to run GPU code with no GPU available\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    printf("Maximum values per block: %li\n", max_values_per_block);
+
+
+    QuESTEnv env;
+    env.rank=0;
+    env.numRanks=1;
+    
+    env.seeds = NULL;
+    env.numSeeds = 0;
+    env.comp =  ZFP_COMPRESSION;
+    env.zfp_conf = conf;
+    env.max_values_per_block = max_values_per_block;
+    env.use_dynamic_allocation = use_dynamic_allocation;
+    seedQuESTDefault(&env);
+
+    return env;
+}
+
+QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block) {
+    
+    printf("createQuESTEnvFPZIP not implemented\n");
+    exit(EXIT_FAILURE);
+}
+
+QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block) {
+    
+    printf("createQuESTEnvFPC not implemented\n");
+    exit(EXIT_FAILURE);
+}
+
 void syncQuESTEnv(QuESTEnv env){
     cudaDeviceSynchronize();
 } 
@@ -567,17 +655,27 @@ void statevec_reportStateToScreen(Qureg qureg, QuESTEnv env, int reportRank){
 }
 
 qreal statevec_getRealAmp(Qureg qureg, long long int index){
-    qreal el=0;
-    cudaMemcpy(&el, &(qureg.deviceStateVec.real[index]), 
-            sizeof(*(qureg.deviceStateVec.real)), cudaMemcpyDeviceToHost);
-    return el;
+    if (qureg.comp != NO_COMPRESSION) {
+        return compressedMemory_get_value(qureg.real_mem, qureg.real_block, index);
+    }
+    else {
+        qreal el=0;
+        cudaMemcpy(&el, &(qureg.deviceStateVec.real[index]), 
+                sizeof(*(qureg.deviceStateVec.real)), cudaMemcpyDeviceToHost);
+        return el;
+    }
 }
 
 qreal statevec_getImagAmp(Qureg qureg, long long int index){
-    qreal el=0;
-    cudaMemcpy(&el, &(qureg.deviceStateVec.imag[index]), 
-            sizeof(*(qureg.deviceStateVec.imag)), cudaMemcpyDeviceToHost);
-    return el;
+    if (qureg.comp != NO_COMPRESSION) {
+        return compressedMemory_get_value(qureg.imag_mem, qureg.imag_block, index);
+    }
+    else {
+        qreal el=0;
+        cudaMemcpy(&el, &(qureg.deviceStateVec.imag[index]), 
+                sizeof(*(qureg.deviceStateVec.imag)), cudaMemcpyDeviceToHost);
+        return el;
+    }
 }
 
 __global__ void statevec_initBlankStateKernel(long long int stateVecSize, qreal *stateVecReal, qreal *stateVecImag){
@@ -592,13 +690,19 @@ __global__ void statevec_initBlankStateKernel(long long int stateVecSize, qreal 
 
 void statevec_initBlankState(Qureg qureg)
 {
+    printf("initBlankState\n");
+
     int threadsPerCUDABlock, CUDABlocks;
     threadsPerCUDABlock = 128;
-    CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk)/threadsPerCUDABlock);
-    statevec_initBlankStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
-        qureg.numAmpsPerChunk, 
-        qureg.deviceStateVec.real, 
-        qureg.deviceStateVec.imag);
+    for(size_t i = 0; i < qureg.real_mem->n_blocks; i++) {
+        compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+        compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+        CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
+        statevec_initBlankStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
+        qureg.real_block->n_values, 
+        qureg.real_block->data, 
+        qureg.imag_block->data);
+    }
 }
 
 __global__ void statevec_initZeroStateKernel(long long int stateVecSize, qreal *stateVecReal, qreal *stateVecImag){
@@ -617,37 +721,60 @@ __global__ void statevec_initZeroStateKernel(long long int stateVecSize, qreal *
     }
 }
 
-void statevec_initZeroState(Qureg qureg)
-{
-    int threadsPerCUDABlock, CUDABlocks;
-    threadsPerCUDABlock = 128;
-    CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk)/threadsPerCUDABlock);
-    statevec_initZeroStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
-        qureg.numAmpsPerChunk, 
-        qureg.deviceStateVec.real, 
-        qureg.deviceStateVec.imag);
+void cudaCopyDataToGPU(void *dst, const void *src, size_t count) {
+    //printf("Copy data from Host RAM to GPU VRAM, size: %li\n", count);
+    cudaMemcpy(dst, src, count, cudaMemcpyHostToDevice);
 }
 
-__global__ void statevec_initPlusStateKernel(long long int stateVecSize, qreal *stateVecReal, qreal *stateVecImag){
+void statevec_initZeroState(Qureg qureg)
+{
+    printf("initZeroState\n");
+
+    int threadsPerCUDABlock, CUDABlocks;
+    threadsPerCUDABlock = 128;
+
+    compressedMemory_load(qureg.real_mem, 0, qureg.real_block);
+    compressedMemory_load(qureg.imag_mem, 0, qureg.imag_block);
+    CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
+    statevec_initZeroStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
+    qureg.real_block->n_values, 
+    qureg.real_block->data, 
+    qureg.imag_block->data);
+
+    printf("Setting zero State for index 0\n");
+
+    for(size_t i = 1; i < qureg.real_mem->n_blocks; i++) {
+        compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+        compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+        CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
+        statevec_initBlankStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->n_values, qureg.real_block->data, qureg.imag_block->data);
+    }
+}
+
+__global__ void statevec_initPlusStateKernel(long long int stateVecSize, qreal normFactor, qreal *stateVecReal, qreal *stateVecImag){
     long long int index;
 
     index = blockIdx.x*blockDim.x + threadIdx.x;
     if (index>=stateVecSize) return;
 
-    qreal normFactor = 1.0/sqrt((qreal)stateVecSize);
     stateVecReal[index] = normFactor;
     stateVecImag[index] = 0.0;
 }
 
 void statevec_initPlusState(Qureg qureg)
 {
+    printf("initPlusState\n");
+
     int threadsPerCUDABlock, CUDABlocks;
     threadsPerCUDABlock = 128;
-    CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk)/threadsPerCUDABlock);
-    statevec_initPlusStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(
-        qureg.numAmpsPerChunk, 
-        qureg.deviceStateVec.real, 
-        qureg.deviceStateVec.imag);
+    qreal normFactor = 1.0/sqrt((qreal)qureg.numAmpsPerChunk);
+    
+    for(size_t i = 0; i < qureg.real_mem->n_blocks; i++) {
+        compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+        compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+        CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
+        statevec_initPlusStateKernel<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->n_values, normFactor,qureg.real_block->data, qureg.imag_block->data);
+    }
 }
 
 __global__ void statevec_initClassicalStateKernel(long long int stateVecSize, qreal *stateVecReal, qreal *stateVecImag, long long int stateInd){
@@ -1357,12 +1484,94 @@ __global__ void statevec_pauliXKernel(Qureg qureg, int targetQubit){
     stateVecImag[indexLo] = stateImagUp;
 }
 
+__global__ void statevec_pauliXKernel_Block(qreal *stateVecRealUp, qreal *stateVecImagUp, qreal *stateVecRealLo, qreal *stateVecImagLo, int targetQubit, long long int numTasks){
+    // ----- sizes
+    long long int sizeBlock,                                           // size of blocks
+         sizeHalfBlock;                                       // size of blocks halved
+    // ----- indices
+    long long int thisBlock,                                           // current block
+         indexUp,indexLo;                                     // current index and corresponding index in lower half block
+
+    // ----- temp variables
+    qreal   stateRealUp,                             // storage for previous state values
+           stateImagUp;                             // (used in updates)
+    // ----- temp variables
+    long long int thisTask;                                   // task based approach for expose loop with small granularity
+
+    sizeHalfBlock = 1LL << targetQubit;                               // size of blocks halved
+    sizeBlock     = 2LL * sizeHalfBlock;                           // size of blocks
+
+    // ---------------------------------------------------------------- //
+    //            rotate                                                //
+    // ---------------------------------------------------------------- //
+
+    //! fix -- no necessary for GPU version
+
+    thisTask = blockIdx.x*blockDim.x + threadIdx.x;
+    if (thisTask>=numTasks) return;
+
+    thisBlock   = thisTask / sizeHalfBlock;
+    indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
+    indexLo     = indexUp;
+
+    if (stateVecRealUp == stateVecRealLo) {
+        indexLo     = indexUp + sizeHalfBlock;
+    }
+
+    // store current state vector values in temp variables
+    stateRealUp = stateVecRealUp[indexUp];
+    stateImagUp = stateVecImagUp[indexUp];
+
+    stateVecRealUp[indexUp] = stateVecRealLo[indexLo];
+    stateVecImagUp[indexUp] = stateVecImagLo[indexLo];
+
+    stateVecRealLo[indexLo] = stateRealUp;
+    stateVecImagLo[indexLo] = stateImagUp;
+}
+
 void statevec_pauliX(Qureg qureg, int targetQubit) 
 {
     int threadsPerCUDABlock, CUDABlocks;
     threadsPerCUDABlock = 128;
-    CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk>>1)/threadsPerCUDABlock);
-    statevec_pauliXKernel<<<CUDABlocks, threadsPerCUDABlock>>>(qureg, targetQubit);
+    
+    long long int sizeHalfBlock = 1LL << targetQubit;
+    long long int numTasks = qureg.numAmpsPerChunk>>1;
+    long long int step = (numTasks / qureg.real_mem->n_blocks); // 256
+    long long int blocks_to_process = 1;
+    if (step < sizeHalfBlock) { // 512
+        // Set to maximum step size
+        step = qureg.real_mem->values_per_block; // 512
+        blocks_to_process = sizeHalfBlock/qureg.real_mem->values_per_block;
+    }
+
+    long long int offset = 0;
+    size_t i = 0;
+    while(offset < numTasks) { // 0 < 512
+        /* For each size half block run through x number of blocks to equal the sizeOfHalfBlock*/
+        for(size_t k = 0; k < blocks_to_process; k++) {
+            compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+            compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+            cudaDeviceSynchronize();
+            CUDABlocks = ceil((qreal)(step)/threadsPerCUDABlock);
+            if (sizeHalfBlock < qureg.real_mem->values_per_block) { // false
+                /* Both indexLo and indexUp fit in the current block */
+                statevec_pauliXKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->data, qureg.imag_block->data, qureg.real_block->data, qureg.imag_block->data, targetQubit, step);
+            } else {
+                /* They are in different blocks */
+                // Calculate what the next block indexLo block should be
+                size_t j = i + blocks_to_process;
+                compressedMemory_load(qureg.real_mem, j, qureg.real_tmp_block);
+                compressedMemory_load(qureg.imag_mem, j, qureg.imag_tmp_block);
+                statevec_pauliXKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->data, qureg.imag_block->data, qureg.real_tmp_block->data, qureg.imag_tmp_block->data, targetQubit, step);
+                compressedMemory_save(qureg.real_mem, qureg.real_tmp_block);
+                compressedMemory_save(qureg.imag_mem, qureg.imag_tmp_block);
+            }
+            i++;
+            offset += step;
+        }
+
+        i += sizeHalfBlock/qureg.real_mem->values_per_block;
+    }
 }
 
 __global__ void statevec_pauliYKernel(Qureg qureg, int targetQubit, int conjFac){
@@ -1731,13 +1940,42 @@ __global__ void statevec_multiControlledPhaseFlipKernel(Qureg qureg, long long i
     }
 }
 
+__global__ void statevec_multiControlledPhaseFlipKernel_Block(qreal *stateVecReal, qreal *stateVecImag, long long int mask, long long int offset, long long int stateVecSize)
+{
+    long long int index, realIndex;
+
+    index = blockIdx.x*blockDim.x + threadIdx.x;
+    realIndex = index + offset;
+    if (realIndex>=stateVecSize) return;
+
+    if (mask == (mask & realIndex) ){
+        stateVecReal [index] = -stateVecReal [index];
+        stateVecImag [index] = -stateVecImag [index];
+    }
+}
+
 void statevec_multiControlledPhaseFlip(Qureg qureg, int *controlQubits, int numControlQubits)
 {
+    //printf("multiControlledPhaseFlip\n");
+
     int threadsPerCUDABlock, CUDABlocks;
     long long int mask = getQubitBitMask(controlQubits, numControlQubits);
     threadsPerCUDABlock = 128;
-    CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk)/threadsPerCUDABlock);
-    statevec_multiControlledPhaseFlipKernel<<<CUDABlocks, threadsPerCUDABlock>>>(qureg, mask);
+
+    long long int offset;
+    long long int stateVecSize = qureg.numAmpsPerChunk;
+    for(size_t i = 0; i < qureg.real_mem->n_blocks; i++) {
+        compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+        compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+        CUDABlocks = ceil((qreal)(qureg.real_block->n_values)/threadsPerCUDABlock);
+        offset = i * qureg.real_mem->values_per_block;
+        statevec_multiControlledPhaseFlipKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(
+        qureg.real_block->data,
+        qureg.imag_block->data, 
+        mask, 
+        offset,
+        stateVecSize);
+    }
 }
 
 __global__ void statevec_swapQubitAmpsKernel(Qureg qureg, int qb1, int qb2) {
@@ -1823,12 +2061,101 @@ __global__ void statevec_hadamardKernel (Qureg qureg, int targetQubit){
     stateVecImag[indexLo] = recRoot2*(stateImagUp - stateImagLo);
 }
 
+__global__ void statevec_hadamardKernel_Block(qreal *stateVecRealUp, qreal *stateVecImagUp, qreal *stateVecRealLo, qreal *stateVecImagLo, int targetQubit, long long int numTasks){
+    // ----- sizes
+    long long int sizeBlock,                                           // size of blocks
+         sizeHalfBlock;                                       // size of blocks halved
+    // ----- indices
+    long long int thisBlock,                                           // current block
+         indexUp,indexLo;                                     // current index and corresponding index in lower half block
+
+    // ----- temp variables
+    qreal   stateRealUp,stateRealLo,                             // storage for previous state values
+           stateImagUp,stateImagLo;                             // (used in updates)
+    // ----- temp variables
+    long long int thisTask;                                   // task based approach for expose loop with small granularity
+
+    sizeHalfBlock = 1LL << targetQubit;                               // size of blocks halved
+    sizeBlock     = 2LL * sizeHalfBlock;                           // size of blocks
+
+    // ---------------------------------------------------------------- //
+    //            rotate                                                //
+    // ---------------------------------------------------------------- //
+
+    //! fix -- no necessary for GPU version
+
+    qreal recRoot2 = 1.0/sqrt(2.0);
+
+    thisTask = blockIdx.x*blockDim.x + threadIdx.x;
+    if (thisTask>=numTasks) return;
+
+    thisTask = thisTask;
+
+    thisBlock   = thisTask / sizeHalfBlock;
+    indexUp     = thisBlock*sizeBlock + thisTask%sizeHalfBlock;
+    indexLo     = indexUp;
+
+    if (stateVecRealUp == stateVecRealLo) {
+        indexLo     = indexUp + sizeHalfBlock;
+    }
+
+    // store current state vector values in temp variables
+    stateRealUp = stateVecRealUp[indexUp];
+    stateImagUp = stateVecImagUp[indexUp];
+
+    stateRealLo = stateVecRealLo[indexLo];
+    stateImagLo = stateVecImagLo[indexLo];
+
+    stateVecRealUp[indexUp] = recRoot2*(stateRealUp + stateRealLo);
+    stateVecImagUp[indexUp] = recRoot2*(stateImagUp + stateImagLo);
+
+    stateVecRealLo[indexLo] = recRoot2*(stateRealUp - stateRealLo);
+    stateVecImagLo[indexLo] = recRoot2*(stateImagUp - stateImagLo);
+}
+
 void statevec_hadamard(Qureg qureg, int targetQubit) 
 {
+    //printf("hadamard\n");
+
     int threadsPerCUDABlock, CUDABlocks;
     threadsPerCUDABlock = 128;
-    CUDABlocks = ceil((qreal)(qureg.numAmpsPerChunk>>1)/threadsPerCUDABlock);
-    statevec_hadamardKernel<<<CUDABlocks, threadsPerCUDABlock>>>(qureg, targetQubit);
+    
+    long long int sizeHalfBlock = 1LL << targetQubit;
+    long long int numTasks = qureg.numAmpsPerChunk>>1;
+    long long int step = (numTasks / qureg.real_mem->n_blocks); // 256
+    long long int blocks_to_process = 1;
+    if (step < sizeHalfBlock) { // 512
+        // Set to maximum step size
+        step = qureg.real_mem->values_per_block; // 512
+        blocks_to_process = sizeHalfBlock/qureg.real_mem->values_per_block;
+    }
+
+    size_t i = 0;
+    long long int offset = 0;
+    while(offset < numTasks) {
+        /* For each size half block run through x number of blocks to equal the sizeOfHalfBlock*/
+        for(size_t k = 0; k < blocks_to_process; k++) {
+            compressedMemory_load(qureg.real_mem, i, qureg.real_block);
+            compressedMemory_load(qureg.imag_mem, i, qureg.imag_block);
+            CUDABlocks = ceil((qreal)(step)/threadsPerCUDABlock);
+            if (sizeHalfBlock < qureg.real_mem->values_per_block) { // false
+                /* Both indexLo and indexUp fit in the current block */
+                statevec_hadamardKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->data, qureg.imag_block->data, qureg.real_block->data, qureg.imag_block->data, targetQubit, step);
+            } else {
+                /* They are in different blocks */
+                // Calculate what the next block indexLo block should be
+                size_t j = i + blocks_to_process;
+                compressedMemory_load(qureg.real_mem, j, qureg.real_tmp_block);
+                compressedMemory_load(qureg.imag_mem, j, qureg.imag_tmp_block);
+                statevec_hadamardKernel_Block<<<CUDABlocks, threadsPerCUDABlock>>>(qureg.real_block->data, qureg.imag_block->data, qureg.real_tmp_block->data, qureg.imag_tmp_block->data, targetQubit, step);
+                compressedMemory_save(qureg.real_mem, qureg.real_tmp_block);
+                compressedMemory_save(qureg.imag_mem, qureg.imag_tmp_block);
+            }
+            i++;
+            offset += step;
+        }
+        i += sizeHalfBlock/qureg.real_mem->values_per_block;
+    }
 }
 
 __global__ void statevec_controlledNotKernel(Qureg qureg, int controlQubit, int targetQubit)
