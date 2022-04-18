@@ -317,10 +317,6 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
 
         qureg->real_block = rawDataBlock_allocate(conf);
         qureg->imag_block = rawDataBlock_allocate(conf);
-
-        /* Allocate the temporary blocks */
-        qureg->real_tmp_block = rawDataBlock_allocate(conf);
-        qureg->imag_tmp_block = rawDataBlock_allocate(conf);
     }
 
     qureg->stateVec.real = (qreal*) malloc(numAmpsPerRank * sizeof(qureg->stateVec.real));
@@ -365,9 +361,6 @@ void statevec_destroyQureg(Qureg qureg, QuESTEnv env)
 
         rawDataBlock_destroy(qureg.real_block);
         rawDataBlock_destroy(qureg.imag_block);
-
-        rawDataBlock_destroy(qureg.real_tmp_block);
-        rawDataBlock_destroy(qureg.imag_tmp_block);
     }
     else {
         // Free GPU memory
