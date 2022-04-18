@@ -5,6 +5,10 @@
 #include "zfp.h"
 #include "zfp-integration.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void _zfpConfigure(ZFPConfig *zfp_conf, zfp_stream* zfp, zfp_field* field) {
     zfp_field_set_type(field, zfp_conf->type);
     switch (zfp_conf->dimensions) {
@@ -186,3 +190,7 @@ void zfpDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_bl
     out_block->size = in_block->n_values * sizeof(*(out_block->data));
     out_block->n_values = in_block->n_values;
 }
+
+#ifdef __cplusplus
+}
+#endif

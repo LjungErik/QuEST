@@ -5,14 +5,16 @@
 #include "compression.h"
 #include "zfp-integration.h"
 
-//static ZFPConfig global_config;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void cudaCopyDataToGPU(void *dst, const void *src, size_t count) {
+void cudaCopyByteDataToGPU(void *dst, const void *src, size_t count) {
     //printf("Copy data from Host RAM to GPU VRAM, size: %li\n", count);
     cudaMemcpy(dst, src, count, cudaMemcpyHostToDevice);
 }
 
-void cudaCopyDataFromGPU(void *dst, const void *src, size_t count) {
+void cudaCopyByteDataFromGPU(void *dst, const void *src, size_t count) {
     //printf("Copy data from Host RAM to GPU VRAM, size: %li\n", count);
     cudaMemcpy(dst, src, count, cudaMemcpyDeviceToHost);
 }
@@ -35,7 +37,7 @@ qreal rawDataBlock_get_value(RawDataBlock* block, long long int index) {
 
     qreal ret;
 
-    cudaCopyDataFromGPU(&ret, (block->data+index), sizeof(qreal));
+    cudaCopyByteDataFromGPU(&ret, (block->data+index), sizeof(qreal));
 
     return ret;
 }
@@ -51,7 +53,7 @@ bool rawDataBlock_set_value(RawDataBlock* block, long long int index, qreal valu
         return false;
     }
 
-    cudaCopyDataToGPU(block->data+index, &value, sizeof(qreal));
+    cudaCopyByteDataToGPU(block->data+index, &value, sizeof(qreal));
 
     return true;
 }
@@ -72,11 +74,6 @@ CompressedMemory* compressedMemory_allocate(CompressionConfig conf) {
     CompressedMemory *mem = (CompressedMemory*) calloc(1, sizeof(CompressedMemory));
     printf("Setting up config data...\n");
 
-    // Need to use special function to copy from RAM to VRAM
-    //cudaCopyDataToGPU(&mem->gpu_zfp_conf, &conf.gpu_zfp_conf, sizeof(mem->gpu_zfp_conf));
-    //global_config = conf.gpu_zfp_conf;
-    //cudaCopyDataToGPU(&mem->n_blocks, &conf.n_blocks, sizeof(mem->n_blocks));
-    //cudaCopyDataToGPU(&mem->values_per_block, &conf.values_per_block, sizeof(mem->values_per_block));
     mem->gpu_zfp_conf = conf.gpu_zfp_conf;
     mem->n_blocks = conf.n_blocks;
     mem->values_per_block = conf.values_per_block;
@@ -123,7 +120,6 @@ void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
     }
 
     size_t index = block->mem_block_index;
-    //printf("Compress block: %li\n", index);
     compression_compress(&mem->gpu_zfp_conf, &mem->blocks[index], block);
 
     block->used = false;
@@ -133,7 +129,6 @@ void compressedMemory_save(CompressedMemory *mem, RawDataBlock* block) {
 
 void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* block) {
     if (rawDataBlock_is_current_block(block, index)) {
-        //printf("Block already loaded!\n");
         return;
     }
 
@@ -141,7 +136,6 @@ void compressedMemory_load(CompressedMemory *mem, size_t index, RawDataBlock* bl
         compressedMemory_save(mem, block);
     }
 
-    //printf("Decompress block: %li, block values: %li\n", index, block->n_values);
     compression_decompress(&mem->gpu_zfp_conf, &mem->blocks[index], block);
 
     block->mem_block_index = index;
@@ -233,7 +227,10 @@ void rawDataBlock_dump_to_file(RawDataBlock *block, FILE *stream) {
     }
 
     /* Fire and forget */
-    //fwrite(block->data, sizeof(*(block->data)), block->n_values, stream);
+    qreal* data = (qreal*)malloc(sizeof(*(block->data))*block->n_values);
+    cudaCopyByteDataFromGPU(data, block->data, sizeof(*(block->data))*block->n_values);
+    fwrite(data, sizeof(*(data)), block->n_values, stream);
+    free(data);
 }
 
 void compressedMemory_dump_memory_to_file(CompressedMemory *mem, RawDataBlock *block, FILE *stream) {
@@ -249,3 +246,7 @@ void compressedMemory_dump_memory_to_file(CompressedMemory *mem, RawDataBlock *b
         rawDataBlock_dump_to_file(block, stream);
     }
 }
+
+#ifdef __cplusplus
+}
+#endif

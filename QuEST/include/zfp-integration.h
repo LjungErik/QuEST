@@ -8,6 +8,10 @@
 #include "zfp.h"
 #include "zfp-config.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LOSSLESS_MODE 'R'
 #define ACCURACY_MODE 'a'
 #define PERCISION_MODE 'p'
@@ -26,5 +30,9 @@ size_t zfpMaxSize(void *config);
 void zfpCompress(void *config, CompressedBlock* out_block, RawDataBlock* in_block);
 
 void zfpDecompress(void *config, CompressedBlock* in_block, RawDataBlock* out_block);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

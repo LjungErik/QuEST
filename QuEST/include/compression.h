@@ -7,6 +7,10 @@
 #include "zfp.h"
 #include "zfp-config.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Maximum size of a compressed block
 #define MAX_VALUES_PER_BLOCK 1024 // floating point numbers per block
 
@@ -75,5 +79,9 @@ void rawDataBlock_destroy(RawDataBlock* block);
 void rawDataBlock_dump_to_file(RawDataBlock *block, FILE *stream);
 
 bool rawDataBlock_is_current_block(RawDataBlock* block, long long int block_idx);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
