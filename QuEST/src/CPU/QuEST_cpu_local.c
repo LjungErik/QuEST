@@ -293,6 +293,14 @@ qreal statevec_getImagAmp(Qureg qureg, long long int index){
     return getQuregImagValue(&qureg, index);
 }
 
+void statevec_printState(Qureg qureg) {
+    for(size_t i = 0; i < qureg.numAmpsPerChunk; i++) {
+        qreal real = statevec_getRealAmp(qureg, i);
+        qreal imag = statevec_getImagAmp(qureg, i);
+        printf("[%li] REAL:  %g, IMAG: %g\n", i, real, imag);
+    }
+}
+
 void statevec_compactUnitary(Qureg qureg, int targetQubit, Complex alpha, Complex beta) 
 {
     statevec_compactUnitaryLocal(qureg, targetQubit, alpha, beta);
