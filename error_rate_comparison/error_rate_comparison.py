@@ -23,8 +23,8 @@ def calc_diff_metrics(file1, file2, nr_values):
         val2arr = []
         vary = []
         for i in range(nr_values):
-            [val1] = struct.unpack('f', f1.read(4))
-            [val2] = struct.unpack('f', f2.read(4))
+            [val1] = struct.unpack('d', f1.read(8))
+            [val2] = struct.unpack('d', f2.read(8))
             val1arr.append(val1)
             val2arr.append(val2)
             vary.append(i)
