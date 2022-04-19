@@ -119,7 +119,7 @@ void grover_search(int numQubits, QuESTEnv env) {
         // monitor the probability of the solution state
         printf("[%i] prob of solution |%d> = %g\n", r, solElem, getProbAmp(qureg, solElem));
     }
-
+    
     dumpQuregStateToFile(&qureg, "grover-search_dump.data");
 
     // Collect each qubits measure and dump to file

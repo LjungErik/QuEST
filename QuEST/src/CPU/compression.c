@@ -51,9 +51,10 @@ void rawDataBlock_dump_to_file(DecompressedBlock *block, FILE *stream) {
 
     // ===================Only for testing!===================
     
-    FILE* fp = fopen("test_file1.txt", "w");
+    FILE* fp = fopen("test_file1.txt", "a");
     
     for (size_t i = 0; i < block->n_values; i++) {
+        
         fprintf(fp, "Vector value: %f\n",block->data[i]);
         // check for error here too
     }

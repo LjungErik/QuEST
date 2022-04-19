@@ -38,7 +38,7 @@ def calc_diff_metrics(file1, file2, nr_values):
         return ("Max diff: ",round(max_diff, 3), "Avg. diff: ", round(tot_diff/nr_values, 3))
 
 def run_grover_default(qubits):
-    compileQuest = 'cd ../../../../QuEST/build/ && cmake .. -DPRECISION=2 -DUSER_SOURCE="../examples/grovers_search.c" && make'
+    compileQuest = 'cd ../../../../QuEST/build/ && rm -rf * && cmake .. -DPRECISION=2 -DUSER_SOURCE="../examples/grovers_search.c" && make'
     os.system(compileQuest)
 
     grover_cmd = '../../../../QuEST/build/demo {}'.format(qubits) 
@@ -62,15 +62,15 @@ def main():
     os.system('rm ./test_file1.txt ./test_file2.txt');
 
     # Compile and run quest grover - no compression 
-    #run_grover_default(n_qubits)
+    run_grover_default(n_qubits)
 
     # Compile and run quest grover - zfp compression(qubits=10, dim=1, blocksize=256, rate=1)
     run_grover_zfp(n_qubits, 1, 512, 16)
     
 
     # Fetch and compare metrics
-    #metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 1024)
-    #print(metrics)
+    metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 1024)
+    print(metrics)
 
 """ 
     if len(sys.argv) < 4:
