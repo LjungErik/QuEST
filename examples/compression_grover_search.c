@@ -105,12 +105,12 @@ void grover_search(int numQubits, QuESTEnv env) {
     
     // randomly choose the element for which to search
     srand(time(NULL));
-    int solElem = rand() % numElems;
+    int solElem = numElems/2;//rand() % numElems;
     
     // prepare |+>
     Qureg qureg = createQureg(numQubits, env);
     initPlusState(qureg);
-    
+    dumpQuregStateToFile(&qureg, "grover-search_dump.data");
     // apply Grover's algorithm
     for (int r=0; r<numReps; r++) {
         applyOracle(qureg, numQubits, solElem);
@@ -119,8 +119,9 @@ void grover_search(int numQubits, QuESTEnv env) {
         // monitor the probability of the solution state
         printf("[%i] prob of solution |%d> = %g\n", r, solElem, getProbAmp(qureg, solElem));
     }
-
-    dumpQuregStateToFile(&qureg, "grover-search_dump.data");
+    
+    
+    
 
     // Collect each qubits measure and dump to file
     for (int i = 0; i < numQubits; i++) {
@@ -420,6 +421,7 @@ void usage() {
 
 int main(int argc, char** argv)
 {
+    
     if (argc < 2) {
         usage();
     }
