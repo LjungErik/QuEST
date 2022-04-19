@@ -17,6 +17,8 @@ def calc_diff_metrics(file1, file2, nr_values):
     max_diff = 0.0
 
     with Bar("Processing", max=nr_values) as bar:
+        cummulative_val1 = 0
+        cummulative_val2 = 0
         f1 = open(file1, 'rb')
         f2 = open(file2, 'rb')
         val1arr = []
@@ -25,6 +27,10 @@ def calc_diff_metrics(file1, file2, nr_values):
         for i in range(nr_values):
             [val1] = struct.unpack('d', f1.read(8))
             [val2] = struct.unpack('d', f2.read(8))
+            if(i % 10 == 0):
+                #print("Val1: " + str(val1) + "       Val2: " + str(val2) +"\n")
+                cummulative_val1 += val1;
+                cummulative_val2 += val2;
             val1arr.append(val1)
             val2arr.append(val2)
             vary.append(i)
@@ -36,6 +42,8 @@ def calc_diff_metrics(file1, file2, nr_values):
         bar.finish()
         f1.close()
         f2.close()
+        print("Average val1: " + str(cummulative_val1 / (nr_values/10)) + "\n")
+        print("Average val2: " + str(cummulative_val2 / (nr_values/10)) + "\n")
 
     plt.plot(vary, val1arr, 'o', label="Quest original",)
     plt.plot(vary, val2arr, '*', label="Quest ZFP",)
