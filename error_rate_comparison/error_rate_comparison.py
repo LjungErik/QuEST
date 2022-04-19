@@ -50,7 +50,7 @@ def calc_diff_metrics(file1, file2, nr_values):
     plt.legend()
     plt.show()
 
-    return ("Max diff: ",round(max_diff, 3), "Avg. diff: ", round(tot_diff/nr_values, 3))
+    return ("Max diff: ",round(max_diff, 3), "Avg. diff: ", round(tot_diff/nr_values, 5))
 
 def run_grover_default(qubits):
     compileQuest = 'cd ../../../../QuEST/build/ && rm -rf * && cmake .. -DPRECISION=2 -DUSER_SOURCE="../examples/grovers_search.c" && make'
@@ -68,7 +68,6 @@ def run_grover_zfp(qubits, dims, blocksize, rate):
     os.system(grover_cmd);
 
 def run_one_test(n_qubits):
-    
 
     # Clear metrics
     os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
