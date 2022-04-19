@@ -2,6 +2,7 @@ from cProfile import label
 import sys
 import os
 
+
 import matplotlib.pyplot as plt
 import struct
 from progress.bar import Bar
@@ -35,13 +36,19 @@ def calc_diff_metrics(file1, file2, nr_values):
         bar.finish()
         f1.close()
         f2.close()
-        return ("Max diff: ",round(max_diff, 3), "Avg. diff: ", round(tot_diff/nr_values, 3))
+
+    plt.plot(vary, val1arr, 'o', label="Quest original",)
+    plt.plot(vary, val2arr, '*', label="Quest ZFP",)
+    plt.legend()
+    plt.show()
+
+    return ("Max diff: ",round(max_diff, 3), "Avg. diff: ", round(tot_diff/nr_values, 3))
 
 def run_grover_default(qubits):
     compileQuest = 'cd ../../../../QuEST/build/ && rm -rf * && cmake .. -DPRECISION=2 -DUSER_SOURCE="../examples/grovers_search.c" && make'
     os.system(compileQuest)
 
-    grover_cmd = '../../../../QuEST/build/demo {}'.format(qubits) 
+    grover_cmd = '../../../../QuEST/build/demo -q {}'.format(qubits) 
     os.system(grover_cmd);
 
 
@@ -52,9 +59,9 @@ def run_grover_zfp(qubits, dims, blocksize, rate):
     grover_cmd = '../build/grover zfp -q {} -{} {} -r {}'.format(qubits, dims, blocksize, rate) 
     os.system(grover_cmd);
 
-def main():
+def run_one_test(n_qubits):
+    
 
-    n_qubits = 10
     # Clear metrics
     os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
 
@@ -64,13 +71,15 @@ def main():
     # Compile and run quest grover - no compression 
     run_grover_default(n_qubits)
 
-    # Compile and run quest grover - zfp compression(qubits=10, dim=1, blocksize=256, rate=1)
+    # Compile and run quest grover - zfp compression(qubits=10, dim=1, blocksize=256, rate=16)
     run_grover_zfp(n_qubits, 1, 512, 16)
     
 
     # Fetch and compare metrics
-    metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 1024)
+    metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 2048)
     print(metrics)
+
+    return metrics
 
 """ 
     if len(sys.argv) < 4:
@@ -81,16 +90,38 @@ def main():
     file2 = sys.argv[2]
     nr_values = int(sys.argv[3])
     
+    print(
+        f"Max Diff: {round(max_diff, 3)}, Avg Diff: {round(tot_diff/nr_values, 3)}")
+    plt.plot(vary, val1arr, 'o', label="Quest original",)
+    plt.plot(vary, val2arr, '*', label="Quest ZFP",)
+    plt.legend()
+    plt.show()
+    
  """
     
+def main():
+
+    run_one_test(10)
+    max_diff_list = []
+    avg_diff_list = []
 
 
-    #print(
-        #f"Max Diff: {round(max_diff, 3)}, Avg Diff: {round(tot_diff/nr_values, 3)}")
-    #plt.plot(vary, val1arr, 'o', label="Quest original",)
-    #plt.plot(vary, val2arr, '*', label="Quest ZFP",)
-    #plt.legend()
-    #plt.show()
+    
+
+    """
+    for qubits in range(10, 12):
+        result = run_one_test(qubits)
+        max_diff_list.append((qubits, result[1])) # Append the max diff value
+        avg_diff_list.append((qubits, result[3])) # Append the average diff value
+    
+    print("Max diff list is:\n")
+    print(max_diff_list)
+    print("\n")
+    print("Max avg list is:\n")
+    print(avg_diff_list)
+
+    """
+    
 
 
 if __name__ == "__main__":
