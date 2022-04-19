@@ -47,6 +47,19 @@ void rawDataBlock_dump_to_file(DecompressedBlock *block, FILE *stream) {
 
     /* Fire and forget */
     fwrite(block->data, sizeof(*(block->data)), block->n_values, stream);
+
+
+    // ===================Only for testing!===================
+    
+    FILE* fp = fopen("test_file1.txt", "w");
+    
+    for (size_t i = 0; i < block->n_values; i++) {
+        fprintf(fp, "Vector value: %f\n",block->data[i]);
+        // check for error here too
+    }
+
+    fclose(fp);
+
 }
 
 size_t compression_maxSize(CompressionImp *imp) {
