@@ -79,15 +79,23 @@ void applyDiffuser(Qureg qureg, int numQubits) {
         hadamard(qureg, q);
 }
 
+void usage()
+{
+    printf("grover <number of qubits>\n");
+    exit(-1);
+}
 
+int main(int argc, char** argv) {
 
-int main() {
+    if (argc < 2) {
+        usage();
+    }
     
     // prepare the hardware-agnostic QuEST environment
     QuESTEnv env = createQuESTEnv();
     
     // choose the system size
-    int numQubits = 15;
+    int numQubits = atoi(argv[1]);
     int numElems = (int) pow(2, numQubits);
     int numReps = ceil(M_PI/4 * sqrt(numElems));
     
