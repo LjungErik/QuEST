@@ -88,8 +88,18 @@ def run_grover_zfp(qubits, dims, blocksize, rate):
     grover_cmd = '../build/grover zfp -q {} -{} {} -r {}'.format(qubits, dims, blocksize, rate) 
     os.system(grover_cmd);
 
-def run_one_test(n_qubits):
+## Dumps array to text-file
+## Returns void
+def array_to_file(array, file):
+    with open(file, 'w') as f:
+        index = 0
+        for val in array:
+            f.write("%s:   " % index)
+            f.write("%s\n" % val)
+            index += 1
 
+def run_one_test(n_qubits):
+    
     # Clear metrics
     os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
 
@@ -101,8 +111,7 @@ def run_one_test(n_qubits):
 
     # Compile and run quest grover - zfp compression(qubits=10, dim=1, blocksize=256, rate=16)
     run_grover_zfp(n_qubits, 1, 512, 16)
-    
-
+ 
     # Fetch and compare metrics
     metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 2048)
     
@@ -116,6 +125,8 @@ def run_one_test(n_qubits):
     for i in range(len(sub_arrays_zfp)):
         average_diffs.append(calc_avg_diff(sub_arrays_no_comp[i], sub_arrays_zfp[i]))
         print("Average diff no." + str(i) + ":  " + str(average_diffs[i]))
+
+    array_to_file(average_diffs, "avg_differences.txt")
     
     
     
