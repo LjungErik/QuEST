@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 import struct
 from progress.bar import Bar
 
-
-def usage():
-    print("usage: main.py <original_file> <decompressed_file> <number_of_vaules>")
-
+## Calculates the difference in the metrics contained in file1 and file2
+## @param1  The first file
+## @param2  The second file
+## @param3  Number of values to be read in respective file
+## @return  Tuple containing the maximum difference and average difference
 def calc_diff_metrics(file1, file2, nr_values):
 
     tot_diff = 0.0
@@ -28,7 +29,6 @@ def calc_diff_metrics(file1, file2, nr_values):
             [val1] = struct.unpack('d', f1.read(8))
             [val2] = struct.unpack('d', f2.read(8))
             if(i % 10 == 0):
-                #print("Val1: " + str(val1) + "       Val2: " + str(val2) +"\n")
                 cummulative_val1 += val1;
                 cummulative_val2 += val2;
             val1arr.append(val1)
@@ -42,8 +42,8 @@ def calc_diff_metrics(file1, file2, nr_values):
         bar.finish()
         f1.close()
         f2.close()
-        print("Average val1: " + str(cummulative_val1 / (nr_values/10)) + "\n")
-        print("Average val2: " + str(cummulative_val2 / (nr_values/10)) + "\n")
+        #print("Average val1: " + str(cummulative_val1 / (nr_values/10)) + "\n")
+        #print("Average val2: " + str(cummulative_val2 / (nr_values/10)) + "\n")
 
     plt.plot(vary, val1arr, 'o', label="Quest original",)
     plt.plot(vary, val2arr, '*', label="Quest ZFP",)
@@ -54,7 +54,7 @@ def calc_diff_metrics(file1, file2, nr_values):
 
 
 ## Opens a binary and produces an array of the data inside
-## Returns the array
+## @return  The array read from binary
 def binary_to_array(file1, nr_values):
 
     with Bar("Processing", max=nr_values) as bar:
@@ -73,6 +73,9 @@ def binary_to_array(file1, nr_values):
     
     return val1arr
 
+## Runs the standard grover algorithm
+## @param1  Number of qubits
+## @return  void
 def run_grover_default(qubits):
     compileQuest = 'cd ../../../../QuEST/build/ && rm -rf * && cmake .. -DPRECISION=2 -DUSER_SOURCE="../examples/grovers_search.c" && make'
     os.system(compileQuest)
@@ -80,7 +83,12 @@ def run_grover_default(qubits):
     grover_cmd = '../../../../QuEST/build/demo -q {}'.format(qubits) 
     os.system(grover_cmd);
 
-
+## Runs the grover algorithm using ZFP-compression
+## @param1  Number of qubits
+## @param2  ZFP dimension
+## @param3  ZFP block size
+## @param4  ZFP compression rate
+## @return  void
 def run_grover_zfp(qubits, dims, blocksize, rate):
     compileQuest = 'cd ../build ; rm -rf * && cmake .. -DPRECISION=2  && make'
     os.system(compileQuest)
@@ -118,13 +126,18 @@ def run_one_test(n_qubits, block_size, rate):
     # Fetch and compare metrics
     metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 2048)
     
+
+    # Fetch state vector of the standard QuEST implementation
     arr_no_comp = binary_to_array("./grover-search_dump_no_compression.data", pow(2,n_qubits)*2)
+    # Fetch state vector of the ZFP QuEST implementation
     arr_zfp = binary_to_array("./grover-search_dump.data", pow(2,n_qubits)*2)
+
+    # Partition both arrays
     sub_arrays_no_comp = sub_divide(arr_no_comp, 32)
     sub_arrays_zfp = sub_divide(arr_zfp, 32)
 
+    # Calculate the average differences between each section of both implementations
     average_diffs = []
-
     for i in range(len(sub_arrays_zfp)):
         average_diffs.append(calc_avg_diff(sub_arrays_no_comp[i], sub_arrays_zfp[i]))
         print("Average diff no." + str(i) + ":  " + str(average_diffs[i]))
