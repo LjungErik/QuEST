@@ -85,20 +85,23 @@ def run_grover_zfp(qubits, dims, blocksize, rate):
     compileQuest = 'cd ../build ; rm -rf * && cmake .. -DPRECISION=2  && make'
     os.system(compileQuest)
     
-    grover_cmd = '../build/grover zfp -q {} -{} {} -r {}'.format(qubits, dims, blocksize, rate) 
+    grover_cmd = '../build/grover zfp -q {} -{} {} -r {} -z '.format(qubits, dims, blocksize, rate) 
     os.system(grover_cmd);
 
 ## Dumps array to text-file
-## Returns void
+## @return void
 def array_to_file(array, file):
     with open(file, 'w') as f:
-        index = 0
         for val in array:
-            f.write("%s:   " % index)
             f.write("%s\n" % val)
-            index += 1
 
-def run_one_test(n_qubits):
+## Runs a test for both the standard QuEST implementation and also QuEST using ZFP-compression using 
+## the given parameters.
+## @param1  Number of qubits
+## @param2  ZFP block size
+## @param3  ZFP compression rate
+## @return  The average differences between the sections of the two state-vectors
+def run_one_test(n_qubits, block_size, rate):
     
     # Clear metrics
     os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
@@ -109,14 +112,14 @@ def run_one_test(n_qubits):
     # Compile and run quest grover - no compression 
     run_grover_default(n_qubits)
 
-    # Compile and run quest grover - zfp compression(qubits=10, dim=1, blocksize=256, rate=16)
-    run_grover_zfp(n_qubits, 1, 512, 16)
+    # Compile and run quest grover 
+    run_grover_zfp(n_qubits, 1, block_size, rate)
  
     # Fetch and compare metrics
     metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 2048)
     
-    arr_no_comp = binary_to_array("./grover-search_dump_no_compression.data", 2048)
-    arr_zfp = binary_to_array("./grover-search_dump.data", 2048)
+    arr_no_comp = binary_to_array("./grover-search_dump_no_compression.data", pow(2,n_qubits)*2)
+    arr_zfp = binary_to_array("./grover-search_dump.data", pow(2,n_qubits)*2)
     sub_arrays_no_comp = sub_divide(arr_no_comp, 32)
     sub_arrays_zfp = sub_divide(arr_zfp, 32)
 
@@ -126,7 +129,8 @@ def run_one_test(n_qubits):
         average_diffs.append(calc_avg_diff(sub_arrays_no_comp[i], sub_arrays_zfp[i]))
         print("Average diff no." + str(i) + ":  " + str(average_diffs[i]))
 
-    array_to_file(average_diffs, "avg_differences.txt")
+    return  average_diffs
+    
     
     
     
@@ -150,7 +154,7 @@ def run_one_test(n_qubits):
  """
 
 ## Divide an array into sub arrays of size
-## Returns array of sub arrays
+## @return  Array of sub arrays
 def sub_divide(array, size):
     super_array = []
     sub_array = []
@@ -171,7 +175,7 @@ def sub_divide(array, size):
 
 
 ## Calculates the average difference between two numerical arrays
-## Returns the average difference
+## @returns  The average numerical difference between the arrays
 def calc_avg_diff(arr1, arr2):
 
     if(len(arr1) != len(arr2)):  # Invalid sizing
@@ -187,12 +191,14 @@ def calc_avg_diff(arr1, arr2):
 
     
 def main():
-    print("Test")
-    # Calc avg. for sections and calc error rate metrics
-    # X-axis = section idx
-    # Y-axis = diff
 
-    run_one_test(10)
+    # Will run a default instance of QuEST and a ZFP instance of QuEST, compare averages
+    # of the state vectors and save to the file "avg_differences.txt"
+    # Settings: 20 wubits, 512 block size, 16 compression rate
+    array_to_file(run_one_test(20, 512, 16), "avg_differences.txt")
+    
+    
+    
     
     
    
