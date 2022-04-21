@@ -178,7 +178,10 @@ def sub_divide(array, size):
 ## @returns  The average numerical difference between the arrays
 def calc_avg_diff(arr1, arr2):
 
-    if(len(arr1) != len(arr2)):  # Invalid sizing
+    if(len(arr1) != len(arr2)): # Invalid sizing
+        return -1
+
+    if(type(arr1[0]) != int):    # Type sanity check    
         return -1
 
     cummulative_diff = 0
