@@ -267,7 +267,7 @@ def clear_and_setup_dir_structure():
         os.system(f'mkdir metrics/metrics_zfp/zfp_COMP_{qubits} metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}')
     
 def run_all_zfp_tests():
-    for qubits in range(10,12):#TEST_CASES['zfp'].keys():
+    for qubits in TEST_CASES['zfp'].keys():
         for block_size in TEST_CASES['zfp'][qubits]['b']:
             for param in TEST_CASES['zfp'][qubits]['params']:
                 if(param[0] == '-r'):
@@ -278,7 +278,7 @@ def run_all_zfp_tests():
                     array_to_file(run_one_zfp_test(qubits, block_size, param, 'static'), out_file)
 
 def run_all_dynamic_zfp_tests():
-    for qubits in range(10,12):#TEST_CASES['zfp'].keys():
+    for qubits in TEST_CASES['zfp'].keys():
         for block_size in TEST_CASES['zfp'][qubits]['b']:
             for param in TEST_CASES['zfp'][qubits]['params']:
                 if(param[0] == '-r'):
@@ -289,7 +289,7 @@ def run_all_dynamic_zfp_tests():
                     array_to_file(run_one_zfp_test(qubits, block_size, param, 'dynamic'), out_file)
                 
 def run_all_fpzip_tests():
-    for qubits in range(10,11):#TEST_CASES['fpzip'].keys():
+    for qubits in TEST_CASES['fpzip'].keys():
         for block_size in TEST_CASES['fpzip'][qubits]['b']:
             for param in TEST_CASES['fpzip'][qubits]['params']:
                 out_file = f"metrics_dynamic/metrics_fpcip/fpzip_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
