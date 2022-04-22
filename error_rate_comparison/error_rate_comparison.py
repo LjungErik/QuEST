@@ -89,27 +89,26 @@ def run_grover_default(qubits):
 ## @param3  ZFP block size
 ## @param4  ZFP compression rate
 ## @return  void
-def run_grover_zfp_rate(qubits, dims, blocksize, rate):
+def run_grover_zfp(qubits, dims, blocksize, param, mode):
     
     compileQuest = 'cd ../build ; rm -rf * && cmake .. -DPRECISION=2  && make'
     os.system(compileQuest)
+    
+    m_flag = ''
 
-    grover_cmd = '../build/grover zfp -q {} -{} {} -r {} -z '.format(qubits, dims, blocksize, rate[1]) 
+    if(mode == 'dynamic'):
+        m_flag = '-d'
+
+    grover_cmd = '../build/grover zfp -q {} -{} {} {} {} {} -z '.format(qubits, dims, blocksize, param[0], param[1], m_flag) 
     os.system(grover_cmd);
     
-    
-def run_grover_zfp_precision(qubits, dims, blocksize, precision):
-    compileQuest = 'cd ../build ; rm -rf * && cmake .. -DPRECISION=2  && make'
-    os.system(compileQuest)
 
-    grover_cmd = '../build/grover zfp -q {} -{} {} -p {} -z '.format(qubits, dims, blocksize, precision[1]) 
-    os.system(grover_cmd);
-
-def run_grover_fpzip(qubits, dims, blocksize, precision):
+def run_grover_fpzip(qubits, dims, blocksize, param):
     compileQuest = 'cd ../build ; rm -rf * && cmake .. -DPRECISION=2  && make'
     os.system(compileQuest)
     
-    grover_cmd = '../build/grover fpzip -q {} -{} {} -p {} -z '.format(qubits, dims, blocksize, precision) 
+    grover_cmd = '../build/grover fpzip -q {} -{} {} -p {} -z '.format(qubits, dims, blocksize, param[1]) 
+    print("TEST==================================: " + grover_cmd +"\n")
     os.system(grover_cmd);
 
 ## Dumps array to text-file
@@ -188,7 +187,7 @@ def calc_avg_diff(arr1, arr2):
 ## @param2  ZFP block size
 ## @param3  ZFP compression rate
 ## @return  The average differences between the sections of the two state-vectors
-def run_one_zfp_test_rate(n_qubits, block_size, rate):
+def run_one_zfp_test(n_qubits, block_size, param, mode):
     
     # Clear metrics
     os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
@@ -200,7 +199,7 @@ def run_one_zfp_test_rate(n_qubits, block_size, rate):
     run_grover_default(n_qubits)
 
     # Compile and run quest grover - with compression
-    run_grover_zfp_rate(n_qubits, 1, block_size, rate)
+    run_grover_zfp(n_qubits, 1, block_size, param, mode)
     
  
     # Fetch and compare metrics
@@ -224,49 +223,13 @@ def run_one_zfp_test_rate(n_qubits, block_size, rate):
 
     return  average_diffs
     
-def run_one_zfp_test_precision(n_qubits, block_size, precision):
-    
-    # Clear metrics
-    os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
-
-    #Remove this later
-    os.system('rm ./test_file1.txt ./test_file2.txt');
-
-    # Compile and run quest grover - no compression 
-    run_grover_default(n_qubits)
-
-    # Compile and run quest grover - with compression
-    run_grover_zfp_precision(n_qubits, 1, block_size, precision)
-    
- 
-    # Fetch and compare metrics
-    metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 2048)
-    
-
-    # Fetch state vector of the standard QuEST implementation
-    arr_no_comp = binary_to_array("./grover-search_dump_no_compression.data", pow(2,n_qubits)*2)
-    # Fetch state vector of the ZFP QuEST implementation
-    arr_zfp = binary_to_array("./grover-search_dump.data", pow(2,n_qubits)*2)
-
-    # Partition both arrays
-    sub_arrays_no_comp = sub_divide(arr_no_comp, 32)
-    sub_arrays_zfp = sub_divide(arr_zfp, 32)
-
-    # Calculate the average differences between each section of both implementations
-    average_diffs = []
-    for i in range(len(sub_arrays_zfp)):
-        average_diffs.append(calc_avg_diff(sub_arrays_no_comp[i], sub_arrays_zfp[i]))
-        print("Average diff no." + str(i) + ":  " + str(average_diffs[i]))
-
-    return  average_diffs
-    
-    
+      
 def run_one_fpzip_test(n_qubits, block_size, precision):
     
     # Clear metrics
     os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
 
-    #Remove this later
+    # Remove readable data
     os.system('rm ./test_file1.txt ./test_file2.txt');
 
     # Compile and run quest grover - no compression 
@@ -297,46 +260,41 @@ def run_one_fpzip_test(n_qubits, block_size, precision):
 
     return average_diffs
 
-    
 def clear_and_setup_dir_structure():
-    os.system('rm -rf metrics && mkdir metrics && mkdir metrics/metrics_zfp');
-
-    #os.system('cd metrics/metrics_zfp && mkdir block_size_128 block_size_256 block_size_512');
-
-    #os.system('mkdir metrics/metrics_zfp/block_size_128/rate_8 metrics/metrics_zfp/block_size_128/rate_16 metrics/metrics_zfp/block_size_128/rate_32 metrics/metrics_zfp/block_size_128/rate_64');
-
-    #print(f"test: {TEST_CASES['zfp'][10]['params']}\n")
+    os.system('rm -rf metrics metrics_dynamic && mkdir metrics metrics_dynamic && mkdir metrics_dynamic/metrics_fpzip metrics/metrics_zfp metrics_dynamic/metrics_zfp');
 
     for qubits in TEST_CASES['zfp'].keys():
-        os.system(f'mkdir metrics/metrics_zfp/zfp_COMP_{qubits}')
+        os.system(f'mkdir metrics/metrics_zfp/zfp_COMP_{qubits} metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}')
     
-
 def run_all_zfp_tests():
-    for qubits in TEST_CASES['zfp'].keys():
+    for qubits in range(10,12):#TEST_CASES['zfp'].keys():
         for block_size in TEST_CASES['zfp'][qubits]['b']:
             for param in TEST_CASES['zfp'][qubits]['params']:
                 if(param[0] == '-r'):
                     out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
-                    array_to_file(run_one_zfp_test_rate(qubits, block_size, param), out_file)
+                    array_to_file(run_one_zfp_test(qubits, block_size, param, 'static'), out_file)
                 else:                    
                     out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
-                    array_to_file(run_one_zfp_test_precision(qubits, block_size, param), out_file)
-                
-                
+                    array_to_file(run_one_zfp_test(qubits, block_size, param, 'static'), out_file)
 
-"""
-def run_all_zfp_tests():
-    for qubits in TEST_CASES['zfp'].keys():
+def run_all_dynamic_zfp_tests():
+    for qubits in range(10,12):#TEST_CASES['zfp'].keys():
         for block_size in TEST_CASES['zfp'][qubits]['b']:
             for param in TEST_CASES['zfp'][qubits]['params']:
                 if(param[0] == '-r'):
-                    out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
-                    array_to_file(run_one_zfp_test_rate(qubits, block_size, param), out_file)
+                    out_file = f"metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                    array_to_file(run_one_zfp_test(qubits, block_size, param, 'dynamic'), out_file)
                 else:                    
-                    out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
-                    array_to_file(run_one_zfp_test_precision(qubits, block_size, param), out_file)
-
-"""
+                    out_file = f"metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                    array_to_file(run_one_zfp_test(qubits, block_size, param, 'dynamic'), out_file)
+                
+def run_all_fpzip_tests():
+    for qubits in range(10,11):#TEST_CASES['fpzip'].keys():
+        for block_size in TEST_CASES['fpzip'][qubits]['b']:
+            for param in TEST_CASES['fpzip'][qubits]['params']:
+                out_file = f"metrics_dynamic/metrics_fpcip/fpzip_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                array_to_file(run_one_fpzip_test(qubits, block_size, param), out_file)
+             
 
 def main():
 
@@ -348,6 +306,8 @@ def main():
     
     clear_and_setup_dir_structure()
     run_all_zfp_tests()
+    run_all_dynamic_zfp_tests()
+    #run_all_fpzip_tests()
     #run_grover_fpzip(10, 1, 512, 64)
     
     
