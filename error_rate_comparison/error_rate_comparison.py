@@ -1,7 +1,7 @@
 from cProfile import label
 import sys
 import os
-
+from test_dictionary import TEST_CASES
 
 import matplotlib.pyplot as plt
 import struct
@@ -29,8 +29,8 @@ def calc_diff_metrics(file1, file2, nr_values):
             [val1] = struct.unpack('d', f1.read(8))
             [val2] = struct.unpack('d', f2.read(8))
             if(i % 10 == 0):
-                cummulative_val1 += val1;
-                cummulative_val2 += val2;
+                cummulative_val1 += val1
+                cummulative_val2 += val2
             val1arr.append(val1)
             val2arr.append(val2)
             vary.append(i)
@@ -89,11 +89,27 @@ def run_grover_default(qubits):
 ## @param3  ZFP block size
 ## @param4  ZFP compression rate
 ## @return  void
-def run_grover_zfp(qubits, dims, blocksize, rate):
+def run_grover_zfp_rate(qubits, dims, blocksize, rate):
+    
+    compileQuest = 'cd ../build ; rm -rf * && cmake .. -DPRECISION=2  && make'
+    os.system(compileQuest)
+
+    grover_cmd = '../build/grover zfp -q {} -{} {} -r {} -z '.format(qubits, dims, blocksize, rate[1]) 
+    os.system(grover_cmd);
+    
+    
+def run_grover_zfp_precision(qubits, dims, blocksize, precision):
+    compileQuest = 'cd ../build ; rm -rf * && cmake .. -DPRECISION=2  && make'
+    os.system(compileQuest)
+
+    grover_cmd = '../build/grover zfp -q {} -{} {} -p {} -z '.format(qubits, dims, blocksize, precision[1]) 
+    os.system(grover_cmd);
+
+def run_grover_fpzip(qubits, dims, blocksize, precision):
     compileQuest = 'cd ../build ; rm -rf * && cmake .. -DPRECISION=2  && make'
     os.system(compileQuest)
     
-    grover_cmd = '../build/grover zfp -q {} -{} {} -r {} -z '.format(qubits, dims, blocksize, rate) 
+    grover_cmd = '../build/grover fpzip -q {} -{} {} -p {} -z '.format(qubits, dims, blocksize, precision) 
     os.system(grover_cmd);
 
 ## Dumps array to text-file
@@ -103,48 +119,6 @@ def array_to_file(array, file):
         for val in array:
             f.write("%s\n" % val)
 
-## Runs a test for both the standard QuEST implementation and also QuEST using ZFP-compression using 
-## the given parameters.
-## @param1  Number of qubits
-## @param2  ZFP block size
-## @param3  ZFP compression rate
-## @return  The average differences between the sections of the two state-vectors
-def run_one_test(n_qubits, block_size, rate):
-    
-    # Clear metrics
-    os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
-
-    #Remove this later
-    os.system('rm ./test_file1.txt ./test_file2.txt');
-
-    # Compile and run quest grover - no compression 
-    run_grover_default(n_qubits)
-
-    # Compile and run quest grover 
-    run_grover_zfp(n_qubits, 1, block_size, rate)
- 
-    # Fetch and compare metrics
-    metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 2048)
-    
-
-    # Fetch state vector of the standard QuEST implementation
-    arr_no_comp = binary_to_array("./grover-search_dump_no_compression.data", pow(2,n_qubits)*2)
-    # Fetch state vector of the ZFP QuEST implementation
-    arr_zfp = binary_to_array("./grover-search_dump.data", pow(2,n_qubits)*2)
-
-    # Partition both arrays
-    sub_arrays_no_comp = sub_divide(arr_no_comp, 32)
-    sub_arrays_zfp = sub_divide(arr_zfp, 32)
-
-    # Calculate the average differences between each section of both implementations
-    average_diffs = []
-    for i in range(len(sub_arrays_zfp)):
-        average_diffs.append(calc_avg_diff(sub_arrays_no_comp[i], sub_arrays_zfp[i]))
-        print("Average diff no." + str(i) + ":  " + str(average_diffs[i]))
-
-    return  average_diffs
-    
-    
     
     
 
@@ -185,33 +159,196 @@ def sub_divide(array, size):
     return super_array
             
 
-
-
 ## Calculates the average difference between two numerical arrays
 ## @returns  The average numerical difference between the arrays
 def calc_avg_diff(arr1, arr2):
 
+    length = len(arr1)
+    
+
     if(len(arr1) != len(arr2)): # Invalid sizing
         return -1
 
-    if(type(arr1[0]) != int):    # Type sanity check    
+    
+
+    if(not isinstance(arr1[0], float)):    # Type sanity check    
         return -1
-
+    
     cummulative_diff = 0
-    length = len(arr1)
-
+    
     for i in range(length):
         cummulative_diff += abs(arr1[i] - arr2[i])
+        
 
     return cummulative_diff/length
 
+## Runs a test for both the standard QuEST implementation and also QuEST using ZFP-compression using 
+## the given parameters.
+## @param1  Number of qubits
+## @param2  ZFP block size
+## @param3  ZFP compression rate
+## @return  The average differences between the sections of the two state-vectors
+def run_one_zfp_test_rate(n_qubits, block_size, rate):
     
+    # Clear metrics
+    os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
+
+    #Remove this later
+    os.system('rm ./test_file1.txt ./test_file2.txt');
+
+    # Compile and run quest grover - no compression 
+    run_grover_default(n_qubits)
+
+    # Compile and run quest grover - with compression
+    run_grover_zfp_rate(n_qubits, 1, block_size, rate)
+    
+ 
+    # Fetch and compare metrics
+    metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 2048)
+    
+
+    # Fetch state vector of the standard QuEST implementation
+    arr_no_comp = binary_to_array("./grover-search_dump_no_compression.data", pow(2,n_qubits)*2)
+    # Fetch state vector of the ZFP QuEST implementation
+    arr_zfp = binary_to_array("./grover-search_dump.data", pow(2,n_qubits)*2)
+
+    # Partition both arrays
+    sub_arrays_no_comp = sub_divide(arr_no_comp, 32)
+    sub_arrays_zfp = sub_divide(arr_zfp, 32)
+
+    # Calculate the average differences between each section of both implementations
+    average_diffs = []
+    for i in range(len(sub_arrays_zfp)):
+        average_diffs.append(calc_avg_diff(sub_arrays_no_comp[i], sub_arrays_zfp[i]))
+        print("Average diff no." + str(i) + ":  " + str(average_diffs[i]))
+
+    return  average_diffs
+    
+def run_one_zfp_test_precision(n_qubits, block_size, precision):
+    
+    # Clear metrics
+    os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
+
+    #Remove this later
+    os.system('rm ./test_file1.txt ./test_file2.txt');
+
+    # Compile and run quest grover - no compression 
+    run_grover_default(n_qubits)
+
+    # Compile and run quest grover - with compression
+    run_grover_zfp_precision(n_qubits, 1, block_size, precision)
+    
+ 
+    # Fetch and compare metrics
+    metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 2048)
+    
+
+    # Fetch state vector of the standard QuEST implementation
+    arr_no_comp = binary_to_array("./grover-search_dump_no_compression.data", pow(2,n_qubits)*2)
+    # Fetch state vector of the ZFP QuEST implementation
+    arr_zfp = binary_to_array("./grover-search_dump.data", pow(2,n_qubits)*2)
+
+    # Partition both arrays
+    sub_arrays_no_comp = sub_divide(arr_no_comp, 32)
+    sub_arrays_zfp = sub_divide(arr_zfp, 32)
+
+    # Calculate the average differences between each section of both implementations
+    average_diffs = []
+    for i in range(len(sub_arrays_zfp)):
+        average_diffs.append(calc_avg_diff(sub_arrays_no_comp[i], sub_arrays_zfp[i]))
+        print("Average diff no." + str(i) + ":  " + str(average_diffs[i]))
+
+    return  average_diffs
+    
+    
+def run_one_fpzip_test(n_qubits, block_size, precision):
+    
+    # Clear metrics
+    os.system('rm ./grover-search_dump.data ./grover-search_dump_no_compression.data');
+
+    #Remove this later
+    os.system('rm ./test_file1.txt ./test_file2.txt');
+
+    # Compile and run quest grover - no compression 
+    run_grover_default(n_qubits)
+
+    # Compile and run quest grover - with compression
+    run_grover_fpzip(n_qubits, 1, block_size, precision)
+    
+ 
+    # Fetch and compare metrics
+    #metrics = calc_diff_metrics("./grover-search_dump.data", "./grover-search_dump_no_compression.data", 2048)
+    
+
+    # Fetch state vector of the standard QuEST implementation
+    arr_no_comp = binary_to_array("./grover-search_dump_no_compression.data", pow(2,n_qubits)*2)
+    # Fetch state vector of the ZFP QuEST implementation
+    arr_comp = binary_to_array("./grover-search_dump.data", pow(2,n_qubits)*2)
+
+    # Partition both arrays
+    sub_arrays_no_comp = sub_divide(arr_no_comp, 32)
+    sub_arrays_comp = sub_divide(arr_comp, 32)
+
+    # Calculate the average differences between each section of both implementations
+    average_diffs = []
+    for i in range(len(sub_arrays_comp)):
+        average_diffs.append(calc_avg_diff(sub_arrays_no_comp[i], sub_arrays_comp[i]))
+        print("Average diff no." + str(i) + ":  " + str(average_diffs[i]))
+
+    return average_diffs
+
+    
+def clear_and_setup_dir_structure():
+    os.system('rm -rf metrics && mkdir metrics && mkdir metrics/metrics_zfp');
+
+    #os.system('cd metrics/metrics_zfp && mkdir block_size_128 block_size_256 block_size_512');
+
+    #os.system('mkdir metrics/metrics_zfp/block_size_128/rate_8 metrics/metrics_zfp/block_size_128/rate_16 metrics/metrics_zfp/block_size_128/rate_32 metrics/metrics_zfp/block_size_128/rate_64');
+
+    #print(f"test: {TEST_CASES['zfp'][10]['params']}\n")
+
+    for qubits in TEST_CASES['zfp'].keys():
+        os.system(f'mkdir metrics/metrics_zfp/zfp_COMP_{qubits}')
+    
+
+def run_all_zfp_tests():
+    for qubits in TEST_CASES['zfp'].keys():
+        for block_size in TEST_CASES['zfp'][qubits]['b']:
+            for param in TEST_CASES['zfp'][qubits]['params']:
+                if(param[0] == '-r'):
+                    out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                    array_to_file(run_one_zfp_test_rate(qubits, block_size, param), out_file)
+                else:                    
+                    out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                    array_to_file(run_one_zfp_test_precision(qubits, block_size, param), out_file)
+                
+                
+
+"""
+def run_all_zfp_tests():
+    for qubits in TEST_CASES['zfp'].keys():
+        for block_size in TEST_CASES['zfp'][qubits]['b']:
+            for param in TEST_CASES['zfp'][qubits]['params']:
+                if(param[0] == '-r'):
+                    out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                    array_to_file(run_one_zfp_test_rate(qubits, block_size, param), out_file)
+                else:                    
+                    out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                    array_to_file(run_one_zfp_test_precision(qubits, block_size, param), out_file)
+
+"""
+
 def main():
 
     # Will run a default instance of QuEST and a ZFP instance of QuEST, compare averages
     # of the state vectors and save to the file "avg_differences.txt"
     # Settings: 20 wubits, 512 block size, 16 compression rate
-    array_to_file(run_one_test(20, 512, 16), "avg_differences.txt")
+    #array_to_file(run_one_zfp_test(12, 512, 32), "avg_differences.txt")
+    
+    
+    clear_and_setup_dir_structure()
+    run_all_zfp_tests()
+    #run_grover_fpzip(10, 1, 512, 64)
     
     
     
