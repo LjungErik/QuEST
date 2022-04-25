@@ -94,7 +94,7 @@ def run_grover_zfp(qubits, dims, blocksize, param, mode):
     compileQuest = 'cd ../build ; rm -rf * && cmake .. -DPRECISION=2  && make'
     os.system(compileQuest)
     
-    m_flag = ''
+    m_flag = ''     
 
     if(mode == 'dynamic'):
         m_flag = '-d'
@@ -108,7 +108,6 @@ def run_grover_fpzip(qubits, dims, blocksize, param):
     os.system(compileQuest)
     
     grover_cmd = '../build/grover fpzip -q {} -{} {} -p {} -z '.format(qubits, dims, blocksize, param[1]) 
-    print("TEST==================================: " + grover_cmd +"\n")
     os.system(grover_cmd);
 
 ## Dumps array to text-file
@@ -260,11 +259,14 @@ def run_one_fpzip_test(n_qubits, block_size, precision):
 
     return average_diffs
 
-def clear_and_setup_dir_structure():
-    os.system('rm -rf metrics metrics_dynamic && mkdir metrics metrics_dynamic && mkdir metrics_dynamic/metrics_fpzip metrics/metrics_zfp metrics_dynamic/metrics_zfp');
+def setup_dir_structure():
+    #os.system('rm -rf metrics metrics_dynamic && mkdir metrics metrics_dynamic && mkdir metrics_dynamic/metrics_fpzip metrics/metrics_zfp metrics_dynamic/metrics_zfp');
 
     for qubits in TEST_CASES['zfp'].keys():
         os.system(f'mkdir metrics/metrics_zfp/zfp_COMP_{qubits} metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}')
+    
+    for qubits in TEST_CASES['fpzip'].keys():
+        os.system(f'mkdir metrics_dynamic/metrics_fpzip/fpzip_COMP_{qubits}')
     
 def run_all_zfp_tests():
     for qubits in TEST_CASES['zfp'].keys():
@@ -292,7 +294,8 @@ def run_all_fpzip_tests():
     for qubits in TEST_CASES['fpzip'].keys():
         for block_size in TEST_CASES['fpzip'][qubits]['b']:
             for param in TEST_CASES['fpzip'][qubits]['params']:
-                out_file = f"metrics_dynamic/metrics_fpcip/fpzip_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                
+                out_file = f"metrics_dynamic/metrics_fpzip/fpzip_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
                 array_to_file(run_one_fpzip_test(qubits, block_size, param), out_file)
              
 
@@ -304,11 +307,11 @@ def main():
     #array_to_file(run_one_zfp_test(12, 512, 32), "avg_differences.txt")
     
     
-    clear_and_setup_dir_structure()
+    setup_dir_structure()
     run_all_zfp_tests()
     run_all_dynamic_zfp_tests()
     #run_all_fpzip_tests()
-    #run_grover_fpzip(10, 1, 512, 64)
+    #run_grover_fpzip(15, 1, 128, 32)
     
     
     
