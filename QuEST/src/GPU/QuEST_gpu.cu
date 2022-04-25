@@ -319,40 +319,12 @@ void statevec_createQureg(Qureg *qureg, int numQubits, QuESTEnv env)
         qureg->imag_block = rawDataBlock_allocate(conf);
     }
 
-    qureg->stateVec.real = (qreal*) malloc(numAmpsPerRank * sizeof(qureg->stateVec.real));
-    qureg->stateVec.imag = (qreal*) malloc(numAmpsPerRank * sizeof(qureg->stateVec.imag));
-    if (env.numRanks>1){
-        qureg->pairStateVec.real = (qreal*) malloc(numAmpsPerRank * sizeof(qureg->pairStateVec.real));
-        qureg->pairStateVec.imag = (qreal*) malloc(numAmpsPerRank * sizeof(qureg->pairStateVec.imag));
-    }
-
-    // check cpu memory allocation was successful
-    if ( (!(qureg->stateVec.real) || !(qureg->stateVec.imag))
-            && numAmpsPerRank ) {
-        printf("Could not allocate memory!\n");
-        exit (EXIT_FAILURE);
-    }
-    if ( env.numRanks>1 && (!(qureg->pairStateVec.real) || !(qureg->pairStateVec.imag))
-            && numAmpsPerRank ) {
-        printf("Could not allocate memory!\n");
-        exit (EXIT_FAILURE);
-    }
-
     printf("Creation completed\n");
 
 }
 
 void statevec_destroyQureg(Qureg qureg, QuESTEnv env)
 {
-
-    // Free CPU memory
-    free(qureg.stateVec.real);
-    free(qureg.stateVec.imag);
-    if (env.numRanks>1){
-        free(qureg.pairStateVec.real);
-        free(qureg.pairStateVec.imag);
-    }
-
     if (env.comp != NO_COMPRESSION) {
         // free space
 
@@ -361,13 +333,6 @@ void statevec_destroyQureg(Qureg qureg, QuESTEnv env)
 
         rawDataBlock_destroy(qureg.real_block);
         rawDataBlock_destroy(qureg.imag_block);
-    }
-    else {
-        // Free GPU memory
-        cudaFree(qureg.deviceStateVec.real);
-        cudaFree(qureg.deviceStateVec.imag);
-        cudaFree(qureg.firstLevelReduction);
-        cudaFree(qureg.secondLevelReduction);
     }
 
     qureg.stateVec.real = NULL;
