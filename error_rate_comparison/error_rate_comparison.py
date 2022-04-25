@@ -2,6 +2,7 @@ from cProfile import label
 import sys
 import os
 from test_dictionary import TEST_CASES
+import numpy as np
 
 import matplotlib.pyplot as plt
 import struct
@@ -45,10 +46,10 @@ def calc_diff_metrics(file1, file2, nr_values):
         #print("Average val1: " + str(cummulative_val1 / (nr_values/10)) + "\n")
         #print("Average val2: " + str(cummulative_val2 / (nr_values/10)) + "\n")
 
-    plt.plot(vary, val1arr, 'o', label="Quest original",)
-    plt.plot(vary, val2arr, '*', label="Quest ZFP",)
-    plt.legend()
-    plt.show()
+    #plt.plot(vary, val1arr, 'o', label="Quest original",)
+    #plt.plot(vary, val2arr, '*', label="Quest ZFP",)
+    #plt.legend()
+    #plt.show()
 
     return ("Max diff: ",round(max_diff, 3), "Avg. diff: ", round(tot_diff/nr_values, 5))
 
@@ -272,23 +273,28 @@ def run_all_zfp_tests():
     for qubits in TEST_CASES['zfp'].keys():
         for block_size in TEST_CASES['zfp'][qubits]['b']:
             for param in TEST_CASES['zfp'][qubits]['params']:
-                if(param[0] == '-r'):
-                    out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
-                    array_to_file(run_one_zfp_test(qubits, block_size, param, 'static'), out_file)
-                else:                    
-                    out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
-                    array_to_file(run_one_zfp_test(qubits, block_size, param, 'static'), out_file)
+                #if(param[0] == '-r'):
+                out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}"
+                array = run_one_zfp_test(qubits, block_size, param, 'static')
+                array_to_png(array, out_file + ".png")
+                array_to_file(array, out_file + ".out")
+                #else:                    
+                    #out_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                    #array = run_one_zfp_test(qubits, block_size, param, 'static')
+                    #array_to_file(run_one_zfp_test(qubits, block_size, param, 'static'), out_file)
 
 def run_all_dynamic_zfp_tests():
     for qubits in TEST_CASES['zfp'].keys():
         for block_size in TEST_CASES['zfp'][qubits]['b']:
             for param in TEST_CASES['zfp'][qubits]['params']:
-                if(param[0] == '-r'):
-                    out_file = f"metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
-                    array_to_file(run_one_zfp_test(qubits, block_size, param, 'dynamic'), out_file)
-                else:                    
-                    out_file = f"metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
-                    array_to_file(run_one_zfp_test(qubits, block_size, param, 'dynamic'), out_file)
+                #if(param[0] == '-r'):
+                out_file = f"metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}"
+                array = run_one_zfp_test(qubits, block_size, param, 'dynamic')
+                array_to_png(array, out_file + ".png")
+                array_to_file(array, out_file + ".out")
+                #else:                    
+                    #out_file = f"metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
+                    #array_to_file(run_one_zfp_test(qubits, block_size, param, 'dynamic'), out_file)
                 
 def run_all_fpzip_tests():
     for qubits in TEST_CASES['fpzip'].keys():
@@ -297,16 +303,26 @@ def run_all_fpzip_tests():
                 
                 out_file = f"metrics_dynamic/metrics_fpzip/fpzip_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
                 array_to_file(run_one_fpzip_test(qubits, block_size, param), out_file)
-             
+
+## Converts data-files to png-files
+def array_to_png(array, file):
+    print("ARRAY TO PNG=============================================")
+    x = np.arange(0, len(array)/2, 1)
+    y = array[:len(array)//2]
+    plt.ylabel('Absolut difference  compression vs. no compression')
+    plt.plot(x,y, marker = '.', linestyle = 'none')
+    plt.savefig(file)
+    plt.clf()
+    
 
 def main():
 
     # Will run a default instance of QuEST and a ZFP instance of QuEST, compare averages
     # of the state vectors and save to the file "avg_differences.txt"
-    # Settings: 20 wubits, 512 block size, 16 compression rate
+    # Settings: 20 qubits, 512 block size, 16 compression rate
     #array_to_file(run_one_zfp_test(12, 512, 32), "avg_differences.txt")
-    
-    
+
+
     setup_dir_structure()
     run_all_zfp_tests()
     run_all_dynamic_zfp_tests()
