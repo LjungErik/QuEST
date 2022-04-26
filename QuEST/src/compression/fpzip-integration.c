@@ -5,7 +5,7 @@
 #include "fpzip.h"
 #include "fpzip-integration.h"
 
-#define MINIMUM_BUFFER_SIZE 512
+#define MINIMUM_BUFFER_SIZE 576
 
 static void _fpzipConfigure(FPZIPConfig *fpz_conf, FPZ* fpz) {
     fpz->type = fpz_conf->type;
