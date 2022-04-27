@@ -300,17 +300,20 @@ def run_all_fpzip_tests():
     for qubits in TEST_CASES['fpzip'].keys():
         for block_size in TEST_CASES['fpzip'][qubits]['b']:
             for param in TEST_CASES['fpzip'][qubits]['params']:
-                
-                out_file = f"metrics_dynamic/metrics_fpzip/fpzip_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}.out"
-                array_to_file(run_one_fpzip_test(qubits, block_size, param), out_file)
+                out_file = f"metrics_dynamic/metrics_fpzip/fpzip_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}"
+                array = run_one_fpzip_test(qubits, block_size, param)
+                array_to_png(array, out_file + ".png")
+                array_to_file(array, out_file + ".out")
 
 ## Converts data-files to png-files
 def array_to_png(array, file):
     print("ARRAY TO PNG=============================================")
     x = np.arange(0, len(array)/2, 1)
     y = array[:len(array)//2]
-    plt.ylabel('Absolut difference  compression vs. no compression')
+    plt.ylabel('Absolute difference compression vs. no compression')
+    plt.xlabel('Partition index')
     plt.plot(x,y, marker = '.', linestyle = 'none')
+    plt.grid()
     plt.savefig(file)
     plt.clf()
     
@@ -324,10 +327,10 @@ def main():
 
 
     setup_dir_structure()
-    run_all_zfp_tests()
-    run_all_dynamic_zfp_tests()
-    #run_all_fpzip_tests()
-    #run_grover_fpzip(15, 1, 128, 32)
+    #run_all_zfp_tests()
+    #run_all_dynamic_zfp_tests()
+    run_all_fpzip_tests()
+    #run_grover_fpzip(12, 1, 512, ['-p', 64])
     
     
     
