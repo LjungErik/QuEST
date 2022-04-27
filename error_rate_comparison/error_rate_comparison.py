@@ -311,6 +311,7 @@ def array_to_png(array, file):
     x = np.arange(0, len(array)//2, 1)
     y = array[:len(array)//2]
     plt.ylabel('Absolute difference compression vs. no compression')
+    plt.xlabel('Partition index')
     plt.plot(x,y, marker = '.', linestyle = 'none')
     plt.grid()
     plt.savefig(file)
@@ -352,6 +353,25 @@ def convert_files_to_png_exclusive():
                 array.pop(0)        # Remove first element
                 array_to_png(array, curr_file + "_exclusive.png")
                 
+def convert_files_to_png():
+    for qubits in TEST_CASES['zfp'].keys():
+        for block_size in TEST_CASES['zfp'][qubits]['b']:
+            for param in TEST_CASES['zfp'][qubits]['params']:                
+                curr_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}"
+                #print(f"Processing file: {curr_file}   ======================")
+                array = file_to_array(curr_file+'.out', pow(2,qubits-4))
+                
+                #print(array)
+                array_to_png(array, curr_file + ".png")
+                
+
+    for qubits in TEST_CASES['zfp'].keys():
+        for block_size in TEST_CASES['zfp'][qubits]['b']:
+            for param in TEST_CASES['zfp'][qubits]['params']:
+                curr_file = f"metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}"
+                array = file_to_array(curr_file+'.out', pow(2,qubits-4))
+                
+                array_to_png(array, curr_file + ".png")
                
 
 
@@ -369,7 +389,7 @@ def main():
     #run_all_fpzip_tests()
     #run_grover_fpzip(15, 1, 128, 32)
     
-    convert_files_to_png_exclusive()
+    convert_files_to_png()
     
     
     
