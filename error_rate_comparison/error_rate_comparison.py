@@ -3,6 +3,7 @@ import sys
 import os
 from test_dictionary import TEST_CASES
 import numpy as np
+from decimal import Decimal
 
 import matplotlib.pyplot as plt
 import struct
@@ -307,13 +308,52 @@ def run_all_fpzip_tests():
 ## Converts data-files to png-files
 def array_to_png(array, file):
     print("ARRAY TO PNG=============================================")
-    x = np.arange(0, len(array)/2, 1)
+    x = np.arange(0, len(array)//2, 1)
     y = array[:len(array)//2]
-    plt.ylabel('Absolut difference  compression vs. no compression')
+    plt.ylabel('Absolute difference compression vs. no compression')
     plt.plot(x,y, marker = '.', linestyle = 'none')
+    plt.grid()
     plt.savefig(file)
     plt.clf()
     
+
+def file_to_array(file1, nr_values):
+    with Bar("Converting Files -> Array", max=nr_values) as bar:
+        f = open(file1, 'r')
+        arr = []
+
+        for i in range(nr_values):
+            arr.append(float(f.readline()))
+            bar.next()
+        bar.finish()
+        f.close()
+    return arr
+
+
+## Reads the .out files, converts them to an array and removes the first outlier element for 
+## ease of data interpretation
+def convert_files_to_png_exclusive():
+    for qubits in TEST_CASES['zfp'].keys():
+        for block_size in TEST_CASES['zfp'][qubits]['b']:
+            for param in TEST_CASES['zfp'][qubits]['params']:                
+                curr_file = f"metrics/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}"
+                #print(f"Processing file: {curr_file}   ======================")
+                array = file_to_array(curr_file+'.out', pow(2,qubits-4))
+                array.pop(0)        # Remove first element
+                #print(array)
+                array_to_png(array, curr_file + "_exclusive.png")
+                
+
+    for qubits in TEST_CASES['zfp'].keys():
+        for block_size in TEST_CASES['zfp'][qubits]['b']:
+            for param in TEST_CASES['zfp'][qubits]['params']:
+                curr_file = f"metrics_dynamic/metrics_zfp/zfp_COMP_{qubits}/test_case_{block_size}_{'_'.join(param)}"
+                array = file_to_array(curr_file+'.out', pow(2,qubits-4))
+                array.pop(0)        # Remove first element
+                array_to_png(array, curr_file + "_exclusive.png")
+                
+               
+
 
 def main():
 
@@ -326,8 +366,11 @@ def main():
     #setup_dir_structure()
     #run_all_zfp_tests()
     #run_all_dynamic_zfp_tests()
-    run_all_fpzip_tests()
+    #run_all_fpzip_tests()
     #run_grover_fpzip(15, 1, 128, 32)
+    
+    convert_files_to_png_exclusive()
+    
     
     
     
