@@ -16,6 +16,7 @@ make
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "QuEST.h"
 
@@ -104,7 +105,7 @@ int main(int argc, char** argv) {
     
     // randomly choose the element for which to search
     srand(time(NULL));
-    int solElem = rand() % numElems;
+    int solElem = 7;//rand() % numElems;
     
     // prepare |+>
     Qureg qureg = createQureg(numQubits, env);
@@ -119,6 +120,11 @@ int main(int argc, char** argv) {
         printf("prob of solution |%d> = %g\n", 
             solElem, getProbAmp(qureg, solElem));
     }
+
+#if USE_SLEEP
+    printf("Short sleep call to allow memory analysis\n");
+    sleep(5);
+#endif
 
     dumpQuregStateToFile(qureg, "grover_statevec_dump.data");
     

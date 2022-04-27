@@ -321,6 +321,7 @@ target_include_directories(QuEST
 target_compile_definitions(QuEST
     PUBLIC
     QuEST_PREC=${PRECISION}
+    USE_SLEEP=${USE_SLEEP}
 )
 
 # -----------------------------------------------------------------------------
