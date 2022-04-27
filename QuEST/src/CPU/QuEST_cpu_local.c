@@ -10,8 +10,10 @@
  */
 
 # include "QuEST.h"
+# include "QuEST_extended.h"
 # include "QuEST_internal.h"
 # include "QuEST_precision.h"
+# include "zfp-integration.h"
 # include "mt19937ar.h"
 
 # include "QuEST_cpu_internal.h"
@@ -176,6 +178,73 @@ QuESTEnv createQuESTEnv(void) {
     
     env.seeds = NULL;
     env.numSeeds = 0;
+    env.comp = NO_COMPRESSION;
+    seedQuESTDefault(&env);
+    
+    return env;
+}
+
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation, bool use_double_blocks) {
+    // init MPI environment
+    
+    printf("Maximum values per block: %li\n", max_values_per_block);
+
+
+    QuESTEnv env;
+    env.rank=0;
+    env.numRanks=1;
+    
+    env.seeds = NULL;
+    env.numSeeds = 0;
+    env.comp =  ZFP_COMPRESSION;
+    env.zfp_conf = conf;
+    env.max_values_per_block = max_values_per_block;
+    env.use_dynamic_allocation = use_dynamic_allocation;
+    env.use_double_blocks = use_double_blocks;
+    seedQuESTDefault(&env);
+    
+    return env;
+}
+
+QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block, bool use_double_blocks) {
+    // init MPI environment
+    
+    printf("Maximum values per block: %li\n", max_values_per_block);
+
+
+    QuESTEnv env;
+    env.rank=0;
+    env.numRanks=1;
+    
+    env.seeds = NULL;
+    env.numSeeds = 0;
+    env.comp =  FPZIP_COMPRESSION;
+    env.fpzip_conf = conf;
+    env.max_values_per_block = max_values_per_block;
+    env.use_dynamic_allocation = true;
+    env.use_double_blocks = use_double_blocks;
+    seedQuESTDefault(&env);
+    
+    return env;
+}
+
+QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block, bool use_double_blocks) {
+    // init MPI environment
+    
+    printf("Maximum values per block: %li\n", max_values_per_block);
+
+
+    QuESTEnv env;
+    env.rank=0;
+    env.numRanks=1;
+    
+    env.seeds = NULL;
+    env.numSeeds = 0;
+    env.comp =  FPC_COMPRESSION;
+    env.fpc_conf = conf;
+    env.max_values_per_block = max_values_per_block;
+    env.use_dynamic_allocation = true;
+    env.use_double_blocks = use_double_blocks;
     seedQuESTDefault(&env);
     
     return env;
@@ -217,11 +286,19 @@ void getEnvironmentString(QuESTEnv env, char str[200]){
 }
 
 qreal statevec_getRealAmp(Qureg qureg, long long int index){
-    return qureg.stateVec.real[index];
+    return getQuregRealValue(&qureg, index);
 }
 
 qreal statevec_getImagAmp(Qureg qureg, long long int index){
-    return qureg.stateVec.imag[index];
+    return getQuregImagValue(&qureg, index);
+}
+
+void statevec_printState(Qureg qureg) {
+    for(size_t i = 0; i < qureg.numAmpsPerChunk; i++) {
+        qreal real = statevec_getRealAmp(qureg, i);
+        qreal imag = statevec_getImagAmp(qureg, i);
+        printf("[%li] REAL:  %g, IMAG: %g\n", i, real, imag);
+    }
 }
 
 void statevec_compactUnitary(Qureg qureg, int targetQubit, Complex alpha, Complex beta) 

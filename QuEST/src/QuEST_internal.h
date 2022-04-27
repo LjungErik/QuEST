@@ -179,6 +179,8 @@ qreal statevec_getImagAmp(Qureg qureg, long long int index);
 
 qreal statevec_getProbAmp(Qureg qureg, long long int index);
 
+void statevec_printState(Qureg qureg);
+
 qreal statevec_calcTotalProb(Qureg qureg);
 
 qreal statevec_calcFidelity(Qureg qureg, Qureg pureState);

@@ -33,6 +33,10 @@
 # define QUEST_H
 
 # include "QuEST_precision.h"
+# include "compression.h"
+# include "zfp-integration.h"
+# include "fpzip-integration.h"
+# include "fpc-integration.h"
 
 // prevent C++ name mangling
 #ifdef __cplusplus
@@ -348,8 +352,23 @@ typedef struct Qureg
     qreal *firstLevelReduction, *secondLevelReduction;
 
     //! Storage for generated QASM output
-    QASMLogger* qasmLog;
-    
+   QASMLogger* qasmLog;
+
+   Compression comp;
+
+   CompressionImp compImp;
+
+   // Contains the memory of compressed real values
+   CompressedMemory* real_mem;
+   // Contains the memory of compressed imaginary values
+   CompressedMemory* imag_mem;
+   
+   // Contains current decompressed active raw real values
+   RawDataBlock* real_block;
+
+   // Contains current decompressed active raw inmaginary valuess
+   RawDataBlock* imag_block;
+
 } Qureg;
 
 /** Information about the environment the program is running in.
@@ -365,9 +384,14 @@ typedef struct QuESTEnv
     int numRanks;
     unsigned long int* seeds;
     int numSeeds;
+    Compression comp;
+    ZFPConfig zfp_conf;
+    FPZIPConfig fpzip_conf;
+    FPCConfig fpc_conf;
+    size_t max_values_per_block;
+    bool use_dynamic_allocation;
+    bool use_double_blocks;
 } QuESTEnv;
-
-
 
 /*
  * public functions
@@ -1858,6 +1882,49 @@ void tGate(Qureg qureg, int targetQubit);
  */
 QuESTEnv createQuESTEnv(void);
 
+/** Create the QuEST execution environment with ZFP compression.
+ * This should be called only once, and the environment should be freed with destroyQuESTEnv at the end
+ * of the user's code.
+ * @see
+ * - reportQuESTEnv()
+ * - destroyQuESTEnv()
+ * - syncQuESTEnv()
+ *
+ * @ingroup type
+ * @return object representing the execution environment. A single instance is used for each program
+ * @author Erik Ljung
+ */
+QuESTEnv createQuESTEnvWithZFP(ZFPConfig conf, size_t max_values_per_block, bool use_dynamic_allocation, bool use_double_blocks);
+
+/** Create the QuEST execution environment with FPZIP compression.
+ * This should be called only once, and the environment should be freed with destroyQuESTEnv at the end
+ * of the user's code.
+ * @see
+ * - reportQuESTEnv()
+ * - destroyQuESTEnv()
+ * - syncQuESTEnv()
+ *
+ * @ingroup type
+ * @return object representing the execution environment. A single instance is used for each program
+ * @author Erik Ljung
+ */
+QuESTEnv createQuESTEnvWithFPZIP(FPZIPConfig conf, size_t max_values_per_block, bool use_double_blocks);
+
+/** Create the QuEST execution environment with FPC compression.
+ * This should be called only once, and the environment should be freed with destroyQuESTEnv at the end
+ * of the user's code.
+ * @see
+ * - reportQuESTEnv()
+ * - destroyQuESTEnv()
+ * - syncQuESTEnv()
+ *
+ * @ingroup type
+ * @return object representing the execution environment. A single instance is used for each program
+ * @author Erik Ljung
+ */
+QuESTEnv createQuESTEnvWithFPC(FPCConfig conf, size_t max_values_per_block, bool use_double_blocks);
+
+
 /** Destroy the QuEST environment. 
  * If something needs to be done to clean up the execution environment, such as 
  * finalizing MPI when running in distributed mode, it is handled here
@@ -2056,6 +2123,8 @@ qreal getImagAmp(Qureg qureg, long long int index);
  * @author Ania Brown
  */
 qreal getProbAmp(Qureg qureg, long long int index);
+
+void printState(Qureg qureg);
 
 /** Get an amplitude from a density matrix at a given row and column.
  *

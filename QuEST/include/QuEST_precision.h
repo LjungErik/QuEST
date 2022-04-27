@@ -11,6 +11,8 @@
  */
 
 # include <math.h>
+# include "zfp.h"
+# include "fpzip.h"
 
 # ifndef QUEST_PRECISION_H
 # define QUEST_PRECISION_H
@@ -27,6 +29,8 @@
  */
 # if QuEST_PREC==1
     # define qreal float
+    # define zfp_type_qreal zfp_type_float
+    # define fpzip_type_qreal FPZIP_TYPE_FLOAT
     // \cond HIDDEN_SYMBOLS   
     # define MPI_QuEST_REAL MPI_FLOAT
     # define MPI_MAX_AMPS_IN_MSG (1LL<<29) // must be 2^int
@@ -41,6 +45,8 @@
  */
 # elif QuEST_PREC==2
     # define qreal double
+    # define zfp_type_qreal zfp_type_double
+    # define fpzip_type_qreal FPZIP_TYPE_DOUBLE
     // \cond HIDDEN_SYMBOLS   
     # define MPI_QuEST_REAL MPI_DOUBLE
     # define MPI_MAX_AMPS_IN_MSG (1LL<<28) // must be 2^int
@@ -56,6 +62,8 @@
  */
 # elif QuEST_PREC==4
     # define qreal long double
+    # define zfp_type_qreal zfp_type_double
+    # define fpzip_type_qreal FPZIP_TYPE_DOUBLE
     // \cond HIDDEN_SYMBOLS   
     # define MPI_QuEST_REAL MPI_LONG_DOUBLE
     # define MPI_MAX_AMPS_IN_MSG (1LL<<27) // must be 2^int

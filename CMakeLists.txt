@@ -16,8 +16,10 @@ project(QuEST_Project)
 # ----- USER OPTIONS ----------------------------------------------------------
 # -----------------------------------------------------------------------------
 
+
 set(USER_SOURCE  "examples/grovers_search.c"  CACHE STRING "Source to build with QuEST library")
 set(OUTPUT_EXE   "demo"  CACHE STRING "Executable to compile to")
+
 
 option(TESTING "Enable unit testing. This disables compiling USER_SOURCE" OFF)
 
@@ -42,14 +44,19 @@ endif()
 if (NOT TESTING)
     message(STATUS "Compiling ${USER_SOURCE} to executable ${OUTPUT_EXE}")
 
+    # ----- ZFP COMPRESSION -------------------------------------------------------
+
+    find_library(ZFP_LIB zfp)
+    find_library(FPZ_LIB fpzip)
+    
     # Create user executable
     add_executable(${OUTPUT_EXE} ${USER_SOURCE})
 
     # Link libraries to user executable, including QuEST library
     if (WIN32)
-        target_link_libraries(${OUTPUT_EXE} QuEST)
+        target_link_libraries(${OUTPUT_EXE} QuEST ${ZFP_LIB} ${FPZ_LIB})
     else ()
-        target_link_libraries(${OUTPUT_EXE} QuEST m)
+        target_link_libraries(${OUTPUT_EXE} QuEST m ${ZFP_LIB} ${FPZ_LIB})
     endif()
 endif()
 
