@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from progress.bar import Bar
 import os
-from error_rate_comparison import binary_to_array
+from error_rate_comparison import binary_to_array, array_to_file
 import numpy as np
 from tqdm import tqdm
 
@@ -31,6 +31,8 @@ def run_quest_tests():
     for qubits in tqdm(range(10, 17)):
         (pre, post) = run_quest_test(qubits)
         ## Maybe partition here?
+        array_to_file(pre, f'imag_metrics/quest_{qubits}_pre.out')
+        array_to_file(post, f'imag_metrics/quest_{qubits}_post.out')
         save_plot(pre, post, f'imag_metrics/quest_{qubits}')
 
 
