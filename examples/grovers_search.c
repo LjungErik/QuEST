@@ -109,6 +109,9 @@ int main(int argc, char** argv) {
     // prepare |+>
     Qureg qureg = createQureg(numQubits, env);
     initPlusState(qureg);
+
+    dumpQuregStateToFile_1(qureg, "grover_statevec_dump_pre.data");
+
     
     // apply Grover's algorithm
     for (int r=0; r<numReps; r++) {
@@ -120,7 +123,7 @@ int main(int argc, char** argv) {
             solElem, getProbAmp(qureg, solElem));
     }
 
-    dumpQuregStateToFile(qureg, "grover_statevec_dump.data");
+    dumpQuregStateToFile_1(qureg, "grover_statevec_dump_post.data");
     
     // free memory 
     destroyQureg(qureg, env);

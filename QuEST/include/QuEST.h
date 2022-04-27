@@ -556,7 +556,7 @@ typedef struct QuESTEnv
 Qureg createQureg(int numQubits, QuESTEnv env);
 
 /* Dumps the state to file*/
-void dumpQuregStateToFile(Qureg qureg, char *filename);
+void dumpQuregStateToFile_1(Qureg qureg, char *filename);
 
 /** Creates a density matrix Qureg object representing a set of qubits which 
  * can enter noisy and mixed states.
