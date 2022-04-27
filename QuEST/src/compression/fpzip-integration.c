@@ -6,6 +6,7 @@
 #include "fpzip-integration.h"
 
 #define MINIMUM_BUFFER_SIZE 512
+#define MINIMIM_BUFFER_HEADER 64
 
 static void _fpzipConfigure(FPZIPConfig *fpz_conf, FPZ* fpz) {
     fpz->type = fpz_conf->type;
@@ -50,6 +51,9 @@ size_t fpzipMaxSize(void *config) {
     if (count < MINIMUM_BUFFER_SIZE) {
         count = MINIMUM_BUFFER_SIZE;
     }
+
+    /* Add extra space for potential header */
+    count += MINIMIM_BUFFER_HEADER;
 
 
     size_t size = (fpz_conf->type == FPZIP_TYPE_FLOAT ? sizeof(float) : sizeof(double));
