@@ -82,16 +82,18 @@ void applyDiffuser(Qureg qureg, int numQubits) {
 
 void usage()
 {
-    printf("grover <number of qubits>\n");
+    printf("grover <number of qubits> <statevec_outout_file>\n");
     exit(-1);
 }
 
 int main(int argc, char** argv) {
 
-    if (argc < 2) {
+    if (argc < 3) {
         usage();
     }
     
+    char* statevec_output_file = argv[2];
+
     // prepare the hardware-agnostic QuEST environment
     QuESTEnv env = createQuESTEnv();
     
@@ -126,7 +128,7 @@ int main(int argc, char** argv) {
     sleep(5);
 #endif
 
-    dumpQuregStateToFile(qureg, "grover_statevec_dump.data");
+    dumpQuregStateToFile(qureg, statevec_output_file);
     
     // free memory 
     destroyQureg(qureg, env);
