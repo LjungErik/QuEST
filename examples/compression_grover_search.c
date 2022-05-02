@@ -94,7 +94,7 @@ void applyDiffuser(Qureg qureg, int numQubits) {
 
 
 
-void grover_search(int numQubits, QuESTEnv env) {
+void grover_search(int numQubits, QuESTEnv env, char* state_vec_output) {
     
     // choose the system size
     int numElems = (int) pow(2, numQubits);
@@ -120,7 +120,7 @@ void grover_search(int numQubits, QuESTEnv env) {
         printf("[%i] prob of solution |%d> = %g\n", r, solElem, getProbAmp(qureg, solElem));
     }
 
-    dumpQuregStateToFile(&qureg, "grover-search_dump.data");
+    dumpQuregStateToFile(&qureg, state_vec_output);
 
     // Collect each qubits measure and dump to file
     // for (int i = 0; i < numQubits; i++) {
@@ -147,6 +147,7 @@ static void usage_zfp() {
     fprintf(stderr, "  -3 <nx> <ny> <nz> : dimensions for 3D array a[nz][ny][nx]\n");
     fprintf(stderr, "  -4 <nx> <ny> <nz> <nw> : dimensions for 4D array a[nw][nz][ny][nx]\n");
     fprintf(stderr, "  -z : use double raw block for fewer compressions\n");
+    fprintf(stderr, "  -f : state vector output file\n");
     fprintf(stderr, "Compression parameters:\n");
     fprintf(stderr, "  -R : reversible (lossless) compression\n");
     fprintf(stderr, "  -r <rate> : fixed rate (# compressed bits per floating-point value)\n");
@@ -169,26 +170,12 @@ static void usage_fpz() {
     fprintf(stderr, "  -3 <nx> <ny> <nz> : dimensions for 3D array a[nz][ny][nx]\n");
     fprintf(stderr, "  -4 <nx> <ny> <nz> <nw> : dimensions for 4D array a[nw][nz][ny][nx]\n");
     fprintf(stderr, "  -z : use double raw block for fewer compressions\n");
+    fprintf(stderr, "  -f : state vector output file\n");
     fprintf(stderr, "Compression parameters:\n");
     fprintf(stderr, "  -p <precision> : fixed precision (# uncompressed bits per value)\n");
     fprintf(stderr, "Examples:\n");
     fprintf(stderr, "  -q 28 -3 100 100 100 -p 16 : 16-bit precision compression of 100x100x100 floats\n");
     fprintf(stderr, "  -q 28 -2 1000 1000 -p 32 : 32-bit precision compression of 1000x1000 floats\n");
-    exit(EXIT_FAILURE);
-}
-
-static void usage_fpc() {
-    fprintf(stderr, "Usage: grover fpc <options>\n");
-    fprintf(stderr, "General Options:\n");
-    fprintf(stderr, "  -q <qubits>: number of qubits\n");
-    fprintf(stderr, "  -b <block_size> : max size of a block\n");
-    fprintf(stderr, "  -z : use double raw block for fewer compressions\n");
-    fprintf(stderr, "Compression parameters:\n");
-    fprintf(stderr, "  -p <predsizem1> : magic number (unsure what it does)\n");
-    fprintf(stderr, "Examples:\n");
-    fprintf(stderr, "  -q 28 -b 1024 -p 16 : 32 magic number compression of 1024 floats\n");
-    fprintf(stderr, "  -q 28 -b 1024 -p 32 : 32 magic number compression of 1024 floats\n");
-    fprintf(stderr, "ONLY SUPPORTS DOUBLE COMPRESSION:\n");
     exit(EXIT_FAILURE);
 }
 
@@ -204,6 +191,7 @@ void zfp_imp (int argc, char** argv) {
     zfp_type type = zfp_type_qreal;
     bool use_dynamic_allocation = false;
     bool use_double_blocks = false;
+    char * state_vec_output = "grover-search_dump.data";
 
     /* parse command-line arguments */
     for (int i = 1; i < argc; i++) {
@@ -256,6 +244,10 @@ void zfp_imp (int argc, char** argv) {
         case 'q':
             if (++i == argc || sscanf(argv[i], "%u", &qubits) != 1) { usage_zfp(); }
             break;
+        case 'f':
+            if (++i == argc) {usage_zfp();}
+            state_vec_output = argv[i];
+            break;
         case 'd':
             use_dynamic_allocation = true;
             break;
@@ -294,7 +286,7 @@ void zfp_imp (int argc, char** argv) {
 
     QuESTEnv env = createQuESTEnvWithZFP(conf, block_size, use_dynamic_allocation, use_double_blocks);
 
-    grover_search(qubits, env);
+    grover_search(qubits, env, state_vec_output);
 }
 
 
@@ -304,6 +296,7 @@ void fpzip_imp (int argc, char** argv) {
     int type = fpzip_type_qreal;
     int precision = 0;
     bool use_double_blocks = false;
+    char * state_vec_output = "grover-search_dump.data";
 
     /* parse command-line arguments */
     for (int i = 1; i < argc; i++) {
@@ -340,6 +333,10 @@ void fpzip_imp (int argc, char** argv) {
         case 'q':
             if (++i == argc || sscanf(argv[i], "%u", &qubits) != 1) { usage_fpz(); }
             break;
+        case 'f':
+            if (++i == argc) {usage_zfp();}
+            state_vec_output = argv[i];
+            break;
         case 'z':
             use_double_blocks = true;
             break;
@@ -367,62 +364,7 @@ void fpzip_imp (int argc, char** argv) {
 
     QuESTEnv env = createQuESTEnvWithFPZIP(conf, block_size, use_double_blocks);
 
-    grover_search(qubits, env);
-}
-
-void fpc_imp (int argc, char** argv) {
-    uint qubits = 0;
-    size_t block_size;
-    long predsizem1 = 0;
-    bool use_double_blocks = false;
-
-    if(sizeof(double) != sizeof(qreal)) {
-        fprintf(stderr, "Invalid qreal size, only support double for fpc\n");
-        usage_fpc();
-    }
-
-    /* parse command-line arguments */
-    for (int i = 1; i < argc; i++) {
-        if (argv[i][0] != '-' || argv[i][2]) { usage_fpc(); }
-        switch (argv[i][1]) {
-        case 'b':
-            if (++i == argc || sscanf(argv[i], "%zu", &block_size) != 1) { usage_fpc(); }
-            break;
-        case 'p':
-            if (++i == argc || sscanf(argv[i], "%lu", &predsizem1) != 1) { usage_fpc(); }
-            break;
-        case 'q':
-            if (++i == argc || sscanf(argv[i], "%u", &qubits) != 1) { usage_fpc(); }
-            break;
-        case 'z':
-            use_double_blocks = true;
-            break;
-        default:
-            usage_fpc();
-            break;
-        }
-    }
-
-    FPCConfig conf = {
-        .block_size = block_size,
-        .predsizem1 = predsizem1,
-    };
-
-    if (!fpcValidateConfig(conf)) {
-        usage_fpc();
-    } else if (qubits == 0) {
-        fprintf(stderr, "Invalid number of qubits\n");
-        usage_fpc();
-    }
-
-    if (sizeof(double) != sizeof(qreal)) {
-        fprintf(stderr, "Invalid precision, qreal != double. FPC only supports double");
-        usage_fpc();
-    }
-
-    QuESTEnv env = createQuESTEnvWithFPC(conf, block_size, use_double_blocks);
-
-    grover_search(qubits, env);
+    grover_search(qubits, env, state_vec_output);
 }
 
 void usage() {
@@ -430,7 +372,6 @@ void usage() {
     fprintf(stderr, "Command:\n");
     fprintf(stderr, "  zfp : using zfp compression\n");
     fprintf(stderr, "  fpzip : using fpzip compression\n");
-    fprintf(stderr, "  fpc : using fpc compression (ONLY FOR DOUBLE)\n");
     exit(EXIT_FAILURE);
 }
 
@@ -446,8 +387,6 @@ int main(int argc, char** argv)
         zfp_imp(argc-1, ++argv);
     } else if (!strncmp(argv[1], "fpzip", 6)) {
         fpzip_imp(argc-1, ++argv);
-    } else if (!strncmp(argv[1], "fpc", 4)) {
-        fpc_imp(argc-1, ++argv);
     } else {
         fprintf(stderr, "Invalid command");
         usage();
