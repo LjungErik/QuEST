@@ -17,7 +17,7 @@ project(QuEST_Project)
 # -----------------------------------------------------------------------------
 
 set(USER_SOURCE  "examples/grovers_search.c"  CACHE STRING "Source to build with QuEST library")
-set(OUTPUT_EXE   "demo"  CACHE STRING "Executable to compile to")
+set(OUTPUT_EXE   "grover"  CACHE STRING "Executable to compile to")
 
 option(TESTING "Enable unit testing. This disables compiling USER_SOURCE" OFF)
 option(USE_SLEEP "Delay execution to allow for memory analysis")
