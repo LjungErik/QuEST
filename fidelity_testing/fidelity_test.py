@@ -1,6 +1,7 @@
 
 import os
 from tqdm import tqdm
+from progress.bar import Bar
 import struct
 
 # Binary locations
@@ -243,6 +244,37 @@ TEST_CASES = {
 }
 
 
+## Calculates the difference in the metrics contained in file1 and file2
+## @param1  The first file
+## @param2  The second file
+## @param3  Number of values to be read in respective file
+## @return  Tuple containing the maximum difference and average difference
+def calc_diff_metrics(file1, file2, nr_values):
+
+    tot_diff = 0.0
+    max_diff = 0.0
+
+    with Bar("Processing", max=nr_values) as bar:
+        f1 = open(file1, 'rb')
+        f2 = open(file2, 'rb')
+        val1arr = []
+        val2arr = []
+        for i in range(nr_values):
+            [val1] = struct.unpack('d', f1.read(8))
+            [val2] = struct.unpack('d', f2.read(8))
+
+            val1arr.append(val1)
+            val2arr.append(val2)
+        
+            bar.next()
+        bar.finish()
+        f1.close()
+        f2.close()
+    res = []
+    for i in range(len(val1arr)):
+        res.append(abs(val1arr[i] - val2arr[i]))
+    return res
+    
 
 ## @param1  Tuple of real and imaginary arrays containing the first state-vector
 ## @param2  Tuple of real and imaginary arrays containing the seconds state-vector
@@ -382,7 +414,12 @@ def main():
     os.system(f'mkdir fidelity_tests && mkdir {zfp_out} {fpzip_out}')
 
     #run_fidelity_tests_zfp()
-    run_fidelity_tests_fpzip()
+    #run_fidelity_tests_fpzip()
+
+    
+
+    #res = calc_diff_metrics(zfp_data_path + f'MEM_zfp_COMP_14/SV_test_case_512_-a_1e-6.out.data', original_data_path + f'MEM_original_14/SV_original.out.data', pow(2, 13))
+    #array_to_text_file('./test.txt', res)
 
 if __name__=="__main__":
     main()
